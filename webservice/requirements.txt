@@ -2,5 +2,6 @@ sqlalchemy
 Flask-SQLAlchemy
 Flask-RESTful
 flask-cors
+flask-migrate
 flask
 gunicorn

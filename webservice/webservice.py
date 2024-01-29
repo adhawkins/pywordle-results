@@ -2,19 +2,21 @@ from flask import Flask, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api, Resource, fields, marshal, reqparse, inputs
 from sqlalchemy.exc import IntegrityError
+from flask_migrate import Migrate
 
 from Database import *
 
 API_BASE = "/wordle-results/api/v1"
 
-db = SQLAlchemy(model_class=Database.Base)
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///pywordle-results.db"
+db = SQLAlchemy(model_class=Database.Base)
+migrate = Migrate(app, db)
 db.init_app(app)
 api = Api(app)
 
-with app.app_context():
-    db.create_all()
+# with app.app_context():
+#     db.create_all()
 
 
 userInfoArgs = reqparse.RequestParser()
