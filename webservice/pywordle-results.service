@@ -1,0 +1,11 @@
+[Unit]
+Description=PyWordle-Results service
+After=network.target
+
+[Service]
+WorkingDirectory=/home/andy/software/pywordle-results/webservice
+Environment="PATH=/home/andy/software/pywordle-results/webservice/venv/bin"
+ExecStart=/home/andy/software/pywordle-results/webservice/venv/bin/gunicorn --workers 3 --bind=0.0.0.0:5000 -m007 wsgi:app
+
+[Install]
+WantedBy=default.target

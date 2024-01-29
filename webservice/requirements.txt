@@ -1,0 +1,6 @@
+sqlalchemy
+Flask-SQLAlchemy
+Flask-RESTful
+flask-cors
+flask
+gunicorn
