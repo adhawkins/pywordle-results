@@ -3,12 +3,14 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api, Resource, fields, marshal, reqparse, inputs
 from sqlalchemy.exc import IntegrityError
 from flask_migrate import Migrate
+from flask_cors import CORS
 
 from Database import *
 
 API_BASE = "/wordle-results/api/v1"
 
 app = Flask(__name__)
+CORS(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///pywordle-results.db"
 db = SQLAlchemy(model_class=Database.Base)
 migrate = Migrate(app, db)
