@@ -169,28 +169,75 @@ class GameAPI(Resource):
             return {"error": str(e.orig)}, 409
 
 
-resultInfoArgs = reqparse.RequestParser()
-resultInfoArgs.add_argument(
+gameResultInfoArgs = reqparse.RequestParser()
+gameResultInfoArgs.add_argument(
     "user",
     type=int,
     required=True,
     help="No user ID provided",
     location="json",
 )
-resultInfoArgs.add_argument(
+gameResultInfoArgs.add_argument(
     "guesses",
     type=int,
     required=True,
     help="No num guesses provided",
     location="json",
 )
-resultInfoArgs.add_argument(
+gameResultInfoArgs.add_argument(
     "success",
     type=int,
     required=True,
     help="No success parameter provided",
     location="json",
 )
+
+game_result_fields = {
+    "id": fields.Integer,
+    "user": fields.Integer,
+    "userdetails.username": fields.String,
+    "userdetails.fullname": fields.String,
+    "game": fields.Integer,
+    "gamedetails.date": fields.String,
+    "gamedetails.solution": fields.String,
+    "guesses": fields.Integer,
+    "success": fields.Integer,
+    "uri": fields.Url("game_result_info"),
+}
+
+
+class GameResultsListAPI(Resource):
+    def get(self, game):
+        results = db.session.execute(
+            db.select(Database.GameResults)
+            .where(Database.GameResults.game == game)
+            .order_by(Database.GameResults.id)
+        ).scalars()
+        return {
+            "gameresults": [marshal(result, game_result_fields) for result in results]
+        }
+
+    def post(self, game):
+        try:
+            args = gameResultInfoArgs.parse_args()
+            result = Database.GameResults(
+                user=args["user"],
+                game=game,
+                guesses=args["guesses"],
+                success=args["success"],
+            )
+            db.session.add(result)
+            db.session.commit()
+            return redirect(url_for("game_result_info", game=game, id=result.id))
+        except IntegrityError as e:
+            return {"error": str(e.orig)}, 409
+
+
+class GameResultAPI(Resource):
+    def get(self, game, id):
+        gameresult = db.get_or_404(Database.GameResults, id)
+        return {"gameresult": marshal(gameresult, game_result_fields)}
+
 
 result_fields = {
     "id": fields.Integer,
@@ -206,29 +253,16 @@ result_fields = {
 }
 
 
-class GameResultsListAPI(Resource):
-    def get(self, game):
-        results = db.session.execute(
-            db.select(Database.GameResults)
-            .where(Database.GameResults.game == game)
-            .order_by(Database.GameResults.id)
-        ).scalars()
-        return {"gameresults": [marshal(result, result_fields) for result in results]}
+class ResultsListAPI(Resource):
+    def get(self):
+        results = db.session.execute(db.select(Database.GameResults)).scalars()
+        return {"results": [marshal(result, result_fields) for result in results]}
 
-    def post(self, game):
-        try:
-            args = resultInfoArgs.parse_args()
-            result = Database.GameResults(
-                user=args["user"],
-                game=game,
-                guesses=args["guesses"],
-                success=args["success"],
-            )
-            db.session.add(result)
-            db.session.commit()
-            return redirect(url_for("result_info", game=game, id=result.id))
-        except IntegrityError as e:
-            return {"error": str(e.orig)}, 409
+
+class ResultAPI(Resource):
+    def get(self, id):
+        result = db.get_or_404(Database.GameResults, id)
+        return {"result": marshal(result, game_result_fields)}
 
 
 guessInfoArgs = reqparse.RequestParser()
@@ -298,12 +332,6 @@ guess_fields = {
 }
 
 
-class GameResultAPI(Resource):
-    def get(self, game, id):
-        gameresult = db.get_or_404(Database.GameResults, id)
-        return {"gameresult": marshal(gameresult, result_fields)}
-
-
 class GuessListAPI(Resource):
     def get(self, game, result):
         guesses = db.session.execute(
@@ -352,11 +380,22 @@ api.add_resource(GameAPI, f"{API_BASE}/games/<int:id>", endpoint="game_info")
 api.add_resource(
     GameResultsListAPI,
     f"{API_BASE}/games/<int:game>/results",
-    endpoint="results_list",
+    endpoint="game_results_list",
 )
 api.add_resource(
     GameResultAPI,
     f"{API_BASE}/games/<int:game>/results/<int:id>",
+    endpoint="game_result_info",
+)
+
+api.add_resource(
+    ResultsListAPI,
+    f"{API_BASE}/results",
+    endpoint="results_list",
+)
+api.add_resource(
+    ResultAPI,
+    f"{API_BASE}/results/<int:id>",
     endpoint="result_info",
 )
 
