@@ -4,6 +4,7 @@ from flask_restful import Api, Resource, fields, marshal, reqparse, inputs
 from sqlalchemy.exc import IntegrityError
 from flask_migrate import Migrate
 from flask_cors import CORS
+from flask_httpauth import HTTPBasicAuth
 
 from Database import *
 
@@ -16,9 +17,15 @@ db = SQLAlchemy(model_class=Database.Base)
 migrate = Migrate(app, db)
 db.init_app(app)
 api = Api(app)
+auth = HTTPBasicAuth()
 
 # with app.app_context():
 #     db.create_all()
+
+
+@auth.verify_password
+def verifyPassword(username, password):
+    return username == "andy" and password == "testing"
 
 
 userInfoArgs = reqparse.RequestParser()
@@ -46,12 +53,14 @@ user_fields = {
 
 
 class UsersListAPI(Resource):
+    @auth.login_required
     def get(self):
         users = db.session.execute(
             db.select(Database.Users).order_by(Database.Users.id)
         ).scalars()
         return {"users": [marshal(user, user_fields) for user in users]}
 
+    @auth.login_required
     def post(self):
         try:
             args = userInfoArgs.parse_args()
@@ -64,10 +73,12 @@ class UsersListAPI(Resource):
 
 
 class UserAPI(Resource):
+    @auth.login_required
     def get(self, id):
         user = db.get_or_404(Database.Users, id)
         return {"user": marshal(user, user_fields)}
 
+    @auth.login_required
     def delete(self, id):
         user = db.get_or_404(Database.Users, id)
         db.session.delete(user)
@@ -75,6 +86,7 @@ class UserAPI(Resource):
 
         return redirect(url_for("users_list"))
 
+    @auth.login_required
     def patch(self, id):
         try:
             args = userInfoArgs.parse_args()
@@ -122,12 +134,14 @@ game_fields = {
 
 
 class GamesListAPI(Resource):
+    @auth.login_required
     def get(self):
         games = db.session.execute(
             db.select(Database.Games).order_by(Database.Games.id)
         ).scalars()
         return {"games": [marshal(game, game_fields) for game in games]}
 
+    @auth.login_required
     def post(self):
         try:
             args = gameInfoArgs.parse_args()
@@ -142,10 +156,12 @@ class GamesListAPI(Resource):
 
 
 class GameAPI(Resource):
+    @auth.login_required
     def get(self, id):
         game = db.get_or_404(Database.Games, id)
         return {"game": marshal(game, game_fields)}
 
+    @auth.login_required
     def delete(self, id):
         game = db.get_or_404(Database.Games, id)
         db.session.delete(game)
@@ -153,6 +169,7 @@ class GameAPI(Resource):
 
         return redirect(url_for("games_list"))
 
+    @auth.login_required
     def patch(self, id):
         try:
             args = gameInfoArgs.parse_args()
@@ -207,6 +224,7 @@ game_result_fields = {
 
 
 class GameResultsListAPI(Resource):
+    @auth.login_required
     def get(self, game):
         results = db.session.execute(
             db.select(Database.GameResults)
@@ -217,6 +235,7 @@ class GameResultsListAPI(Resource):
             "gameresults": [marshal(result, game_result_fields) for result in results]
         }
 
+    @auth.login_required
     def post(self, game):
         try:
             args = gameResultInfoArgs.parse_args()
@@ -234,6 +253,7 @@ class GameResultsListAPI(Resource):
 
 
 class GameResultAPI(Resource):
+    @auth.login_required
     def get(self, game, id):
         gameresult = db.get_or_404(Database.GameResults, id)
         return {"gameresult": marshal(gameresult, game_result_fields)}
@@ -254,12 +274,14 @@ result_fields = {
 
 
 class ResultsListAPI(Resource):
+    @auth.login_required
     def get(self):
         results = db.session.execute(db.select(Database.GameResults)).scalars()
         return {"results": [marshal(result, result_fields) for result in results]}
 
 
 class ResultAPI(Resource):
+    @auth.login_required
     def get(self, id):
         result = db.get_or_404(Database.GameResults, id)
         return {"result": marshal(result, game_result_fields)}
@@ -333,6 +355,7 @@ guess_fields = {
 
 
 class GuessListAPI(Resource):
+    @auth.login_required
     def get(self, game, result):
         guesses = db.session.execute(
             db.select(Database.Guesses)
@@ -341,6 +364,7 @@ class GuessListAPI(Resource):
         ).scalars()
         return {"guesses": [marshal(guess, guess_fields) for guess in guesses]}
 
+    @auth.login_required
     def post(self, game, result):
         try:
             args = guessInfoArgs.parse_args()
@@ -366,6 +390,7 @@ class GuessListAPI(Resource):
 
 
 class GuessAPI(Resource):
+    @auth.login_required
     def get(self, game, result, id):
         guess = db.get_or_404(Database.Guesses, id)
         return {"guess": marshal(guess, guess_fields)}
