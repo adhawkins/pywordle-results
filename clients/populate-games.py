@@ -21,7 +21,9 @@ def gameInDatabase(date, games):
 def populateGames(base_url, debug):
     print(f"Base: '{base_url}', debug: {debug}")
 
-    games = requests.get(f"{base_url}/games").json()["games"]
+    basicAuth = requests.auth.HTTPBasicAuth("andy", "testing")
+
+    games = requests.get(f"{base_url}/games", auth=basicAuth).json()["games"]
 
     gameDate = datetime.date(2021, 6, 19)
     endDate = datetime.date.today()
@@ -32,7 +34,7 @@ def populateGames(base_url, debug):
         if gameInDatabase(gameDate, games):
             print(f"{gameDate} already present")
         else:
-            gameResponse = requests.get(gameURL)
+            gameResponse = requests.get(gameURL, auth=basicAuth)
             if gameResponse.status_code == 200:
                 gameJSON = gameResponse.json()
 
@@ -46,7 +48,9 @@ def populateGames(base_url, debug):
                     "solution": gameJSON["solution"],
                 }
 
-                response = requests.post(f"{base_url}/games", json=gameData)
+                response = requests.post(
+                    f"{base_url}/games", json=gameData, auth=basicAuth
+                )
                 print(f"{gameDate}: {response.status_code}")
 
         gameDate += datetime.timedelta(days=1)

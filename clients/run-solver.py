@@ -10,6 +10,8 @@ from pprint import pprint
 
 import SolveForWord
 
+basicAuth = requests.auth.HTTPBasicAuth("andy", "testing")
+
 
 def resultExists(results, game, user):
     found = list(filter(lambda result: result["user"] == user["id"], results))
@@ -26,7 +28,7 @@ def storeResult(base_url, game, user, guesses):
         "success": 1 if len(guesses) <= 6 else 0,
     }
 
-    result = requests.post(url, json=result).json()["gameresult"]
+    result = requests.post(url, json=result, auth=basicAuth).json()["gameresult"]
 
     guessNumber = 1
 
@@ -43,7 +45,7 @@ def storeResult(base_url, game, user, guesses):
             "result5": str(guess.Matches()[4].value),
         }
 
-        guessResult = requests.post(guessURL, json=guessData)
+        guessResult = requests.post(guessURL, json=guessData, auth=basicAuth)
 
         guessNumber += 1
 
@@ -63,7 +65,7 @@ def runSolver(base_url, words_list, debug):
     # requests_log.setLevel(logging.DEBUG)
     # requests_log.propagate = True
 
-    games = requests.get(f"{base_url}games").json()["games"]
+    games = requests.get(f"{base_url}games", auth=basicAuth).json()["games"]
 
     users = [
         {
@@ -78,9 +80,9 @@ def runSolver(base_url, words_list, debug):
         },
     ]
     for game in games:
-        results = requests.get(f"{base_url}/games/{game['id']}/results").json()[
-            "gameresults"
-        ]
+        results = requests.get(
+            f"{base_url}/games/{game['id']}/results", auth=basicAuth
+        ).json()["gameresults"]
 
         for user in users:
             if not resultExists(results, game["id"], user):

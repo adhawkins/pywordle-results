@@ -10,9 +10,11 @@ import sys
 
 from pprint import pprint
 
+basicAuth = requests.auth.HTTPBasicAuth("andy", "testing")
+
 
 def findUser(base_url, user):
-    users = requests.get(f"{base_url}users").json()["users"]
+    users = requests.get(f"{base_url}users", auth=basicAuth).json()["users"]
     foundUsers = list(filter(lambda checkUser: checkUser["username"] == user, users))
     return foundUsers[0] if foundUsers else None
 
@@ -27,7 +29,7 @@ def storeResult(base_url, game, user, numGuesses, success):
         "success": 1 if success else 0,
     }
 
-    result = requests.post(url, json=gameResult)
+    result = requests.post(url, json=gameResult, auth=basicAuth)
 
 
 def checkSuccess(ctx, param, value):

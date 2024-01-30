@@ -10,9 +10,13 @@ import logging
 
 from pprint import pprint
 
+basicAuth = requests.auth.HTTPBasicAuth("andy", "testing")
+
 
 def resultPresent(base_url, game, user):
-    results = requests.get(f"{base_url}/games/{game}/results").json()["gameresults"]
+    results = requests.get(f"{base_url}/games/{game}/results", auth=basicAuth).json()[
+        "gameresults"
+    ]
 
     found = list(filter(lambda result: result["user"] == user, results))
     return len(found) != 0
@@ -33,7 +37,7 @@ def postResult(base_url, game, user, guesses, failure):
 
         url = f"{base_url}/games/{game}/results"
 
-        response = requests.post(url, json=gameResult)
+        response = requests.post(url, json=gameResult, auth=basicAuth)
         print(f"{game}, user: {gameResult['user']}: {response.status_code}")
         if response.status_code != 200:
             pprint(gameResult)

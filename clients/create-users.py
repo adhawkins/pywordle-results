@@ -9,11 +9,13 @@ import logging
 
 from pprint import pprint
 
+basicAuth = requests.auth.HTTPBasicAuth("andy", "testing")
+
 
 def createUser(base_url, username, fullname):
     user = {"username": username, "fullname": fullname}
 
-    response = requests.post(f"{base_url}/users", json=user)
+    response = requests.post(f"{base_url}/users", json=user, auth=basicAuth)
     print(f"user: {username}: {response.status_code}")
 
 
