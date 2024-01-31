@@ -2,15 +2,3 @@
   width: 100vw;
 }
 
-.row {
-  display: flex;
-  min-height: 100vh;
-}
-
-.column-left {
-  width: 200px;
-}
-
-.column-right {
-  flex-grow: 1;
-}
