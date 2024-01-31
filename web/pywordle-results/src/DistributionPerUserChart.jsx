@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { AgChartsReact } from 'ag-charts-react';
 import PropTypes from 'prop-types';
 
 const DistributionPerUserChart = (props) => {
-  const data = [];
+  const [apiData, setAPIData] = useState({})
+  const [chartOptions, setChartOptions] = useState({})
 
-  if (props.hasOwnProperty('data') && props.data.length) {
+  function updateChart() {
+    const data = [];
+
     const totals = {}
     const userTotals = {};
 
-    props.data.forEach((value) => {
+    apiData.data.forEach((value) => {
       if (!userTotals.hasOwnProperty(value.user)) {
         userTotals[value.user] = 0;
       }
@@ -54,46 +57,68 @@ const DistributionPerUserChart = (props) => {
     };
 
     data.sort((a, b) => { return a.userID - b.userID; });
-  }
 
-  const chartOptions = {
-    title: {
-      text: "Guess Distribution per user",
-    },
-    data: data,
-    series: [
-      { type: 'bar', xKey: 'userName', xName: 'userName', yKey: '1', yName: '1' },
-      { type: 'bar', xKey: 'userName', xName: 'userName', yKey: '2', yName: '2' },
-      { type: 'bar', xKey: 'userName', xName: 'userName', yKey: '3', yName: '3' },
-      { type: 'bar', xKey: 'userName', xName: 'userName', yKey: '4', yName: '4' },
-      { type: 'bar', xKey: 'userName', xName: 'userName', yKey: '5', yName: '5' },
-      { type: 'bar', xKey: 'userName', xName: 'userName', yKey: '6', yName: '6' },
-      { type: 'bar', xKey: 'userName', yKey: 'fail', yName: 'Fail' },
-    ],
-    axes: [
-      {
-        type: "category",
-        position: "bottom",
-        title: {
-          text: "User",
-          enabled: false,
-        },
+    setChartOptions({
+      title: {
+        text: "Guess Distribution per user",
       },
-      {
-        type: "number",
-        position: "left",
-        title: {
-          text: "Frequency (%)",
-          enabled: true,
-        },
-        label: {
-          formatter: (params) => {
-            return params.value + "%";
+      data: data,
+      series: [
+        { type: 'bar', xKey: 'userName', xName: 'userName', yKey: '1', yName: '1' },
+        { type: 'bar', xKey: 'userName', xName: 'userName', yKey: '2', yName: '2' },
+        { type: 'bar', xKey: 'userName', xName: 'userName', yKey: '3', yName: '3' },
+        { type: 'bar', xKey: 'userName', xName: 'userName', yKey: '4', yName: '4' },
+        { type: 'bar', xKey: 'userName', xName: 'userName', yKey: '5', yName: '5' },
+        { type: 'bar', xKey: 'userName', xName: 'userName', yKey: '6', yName: '6' },
+        { type: 'bar', xKey: 'userName', yKey: 'fail', yName: 'Fail' },
+      ],
+      axes: [
+        {
+          type: "category",
+          position: "bottom",
+          title: {
+            text: "User",
+            enabled: false,
           },
         },
-      },
-    ],
+        {
+          type: "number",
+          position: "left",
+          title: {
+            text: "Frequency (%)",
+            enabled: true,
+          },
+          label: {
+            formatter: (params) => {
+              return params.value + "%";
+            },
+          },
+        },
+      ],
+    })
   }
+
+  useEffect(() => {
+    if (apiData.hasOwnProperty('data') && apiData.data.length) {
+      updateChart();
+    }
+  }, [apiData]);
+
+  useEffect(() => {
+    async function fetchData() {
+      fetch("https://wordle-api.gently.org.uk:7001/wordle-results/api/v1/results", props.fetchOptions)
+        .then(res => res.json())
+        .then((data) => {
+          setAPIData({
+            time: new Date().toLocaleTimeString(),
+            data: data.results
+          })
+        })
+    }
+
+    fetchData();
+  }, []);
+
 
 
   return (
@@ -102,22 +127,12 @@ const DistributionPerUserChart = (props) => {
 }
 
 DistributionPerUserChart.propTypes = {
-  data: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.number,
-    user: PropTypes.number,
-    'userdetails.username': PropTypes.string,
-    'userdetails.fullname': PropTypes.string,
-    game: PropTypes.number,
-    'gamedetails.date': PropTypes.string,
-    'gamedetails.solution': PropTypes.string,
-    guesses: PropTypes.number,
-    success: PropTypes.number,
-    uri: PropTypes.string,
-  }))
-}
-
-DistributionPerUserChart.defaultProps = {
-  data: []
+  fetchOptions: PropTypes.shape({
+    headers: PropTypes.shape({
+      'Authorization': PropTypes.string,
+    }),
+    method: PropTypes.string,
+  })
 }
 
 export default DistributionPerUserChart

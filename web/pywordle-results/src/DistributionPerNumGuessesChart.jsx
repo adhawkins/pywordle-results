@@ -1,18 +1,21 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { AgChartsReact } from 'ag-charts-react';
 import PropTypes from 'prop-types';
 
 const DistributionPerNumGuessesChart = (props) => {
-  const data = [];
-  const series = [];
-  const userTotals = {};
+  const [apiData, setAPIData] = useState({})
+  const [chartOptions, setChartOptions] = useState({})
 
-  if (props.hasOwnProperty('data') && props.data.length) {
+  function updateChart() {
+    const data = [];
+    const series = [];
+    const userTotals = {};
+
     const totals = {}
     const users = {}
 
-    props.data.forEach((value) => {
+    apiData.data.forEach((value) => {
       if (!userTotals.hasOwnProperty(value.user)) {
         userTotals[value.user] = 0;
       }
@@ -26,7 +29,7 @@ const DistributionPerNumGuessesChart = (props) => {
       }
     })
 
-    props.data.forEach((value) => {
+    apiData.data.forEach((value) => {
       let groupName = "failure";
 
       if (value.success) {
@@ -66,38 +69,59 @@ const DistributionPerNumGuessesChart = (props) => {
         yName: value.fullname,
       })
     };
-  }
 
-  const chartOptions = {
-    title: {
-      text: "Guess Distribution per number of guesses",
-    },
-    data: data,
-    series: series,
-    axes: [
-      {
-        type: "category",
-        position: "bottom",
-        title: {
-          text: "Num Guesses",
-          enabled: true,
-        },
+    setChartOptions({
+      title: {
+        text: "Guess Distribution per number of guesses",
       },
-      {
-        type: "number",
-        position: "left",
-        title: {
-          text: "Frequency (%)",
-          enabled: true,
-        },
-        label: {
-          formatter: (params) => {
-            return params.value + "%";
+      data: data,
+      series: series,
+      axes: [
+        {
+          type: "category",
+          position: "bottom",
+          title: {
+            text: "Num Guesses",
+            enabled: true,
           },
         },
-      },
-    ],
+        {
+          type: "number",
+          position: "left",
+          title: {
+            text: "Frequency (%)",
+            enabled: true,
+          },
+          label: {
+            formatter: (params) => {
+              return params.value + "%";
+            },
+          },
+        },
+      ],
+    });
   }
+
+  useEffect(() => {
+    if (apiData.hasOwnProperty('data') && apiData.data.length) {
+      updateChart()
+    }
+  }, [apiData]);
+
+  useEffect(() => {
+    async function fetchData() {
+      fetch("https://wordle-api.gently.org.uk:7001/wordle-results/api/v1/results", props.fetchOptions)
+        .then(res => res.json())
+        .then((data) => {
+          setAPIData({
+            time: new Date().toLocaleTimeString(),
+            data: data.results
+          })
+        })
+    }
+
+    fetchData();
+  }, []);
 
   return (
     <AgChartsReact options={chartOptions} />
@@ -105,22 +129,12 @@ const DistributionPerNumGuessesChart = (props) => {
 }
 
 DistributionPerNumGuessesChart.propTypes = {
-  data: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.number,
-    user: PropTypes.number,
-    'userdetails.username': PropTypes.string,
-    'userdetails.fullname': PropTypes.string,
-    game: PropTypes.number,
-    'gamedetails.date': PropTypes.string,
-    'gamedetails.solution': PropTypes.string,
-    guesses: PropTypes.number,
-    success: PropTypes.number,
-    uri: PropTypes.string,
-  }))
-}
-
-DistributionPerNumGuessesChart.defaultProps = {
-  data: []
+  fetchOptions: PropTypes.shape({
+    headers: PropTypes.shape({
+      'Authorization': PropTypes.string,
+    }),
+    method: PropTypes.string,
+  })
 }
 
 export default DistributionPerNumGuessesChart
