@@ -16,9 +16,11 @@ def gameInDatabase(date, games):
 
 
 @click.command()
-@click.option("--base-url", help="The base URL for the API", required=True)
-@click.option("--debug/--no-debug", default=False, help="Debug")
-def populateGames(base_url, debug):
+@click.pass_context
+def populateGames(ctx):
+    base_url = ctx.obj["BASE_URL"]
+    debug = ctx.obj["DEBUG"]
+
     print(f"Base: '{base_url}', debug: {debug}")
 
     basicAuth = requests.auth.HTTPBasicAuth("andy", "testing")

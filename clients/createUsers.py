@@ -20,9 +20,11 @@ def createUser(base_url, username, fullname):
 
 
 @click.command()
-@click.option("--base-url", help="The base URL for the API", required=True)
-@click.option("--debug/--no-debug", default=False, help="Debug")
-def createUsers(base_url, debug):
+@click.pass_context
+def createUsers(ctx):
+    base_url = ctx.obj["BASE_URL"]
+    debug = ctx.obj["DEBUG"]
+
     # http_client.HTTPConnection.debuglevel = 1
 
     # logging.basicConfig()

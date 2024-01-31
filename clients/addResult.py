@@ -41,7 +41,6 @@ def checkSuccess(ctx, param, value):
 
 
 @click.command()
-@click.option("--base-url", help="The base URL for the API", required=True)
 @click.option("--user", help="The user the result applies to", required=True)
 @click.option("--game", help="The game number", required=True)
 @click.option("--guesses", default=-1, is_eager=True, help="The number of guesses")
@@ -51,8 +50,11 @@ def checkSuccess(ctx, param, value):
     callback=checkSuccess,
     help="Whether the game was successful",
 )
-@click.option("--debug/--no-debug", default=False, help="Debug")
-def addResult(base_url, user, game, guesses, success, debug):
+@click.pass_context
+def addResult(ctx, user, game, guesses, success):
+    base_url = ctx.obj["BASE_URL"]
+    debug = ctx.obj["DEBUG"]
+
     # http_client.HTTPConnection.debuglevel = 1
 
     # logging.basicConfig()

@@ -51,12 +51,14 @@ def storeResult(base_url, game, user, guesses):
 
 
 @click.command()
-@click.option("--base-url", help="The base URL for the API", required=True)
 @click.option(
     "--words-list", help="The file name containing the list of words", required=True
 )
-@click.option("--debug/--no-debug", default=False, help="Debug")
-def runSolver(base_url, words_list, debug):
+@click.pass_context
+def runSolver(ctx, words_list):
+    base_url = ctx.obj["BASE_URL"]
+    debug = ctx.obj["DEBUG"]
+
     # http_client.HTTPConnection.debuglevel = 1
 
     # logging.basicConfig()

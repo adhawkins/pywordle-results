@@ -46,10 +46,12 @@ def postResult(base_url, game, user, guesses, failure):
 
 
 @click.command()
-@click.option("--base-url", help="The base URL for the API", required=True)
 @click.option("--csv-file", help="The name of the CSV file to import", required=True)
-@click.option("--debug/--no-debug", default=False, help="Debug")
-def importResults(base_url, csv_file, debug):
+@click.pass_context
+def importResults(ctx, csv_file):
+    base_url = ctx.obj["BASE_URL"]
+    debug = ctx.obj["DEBUG"]
+
     # http_client.HTTPConnection.debuglevel = 1
 
     # logging.basicConfig()
