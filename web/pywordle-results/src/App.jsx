@@ -1,11 +1,11 @@
 import './App.css'
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 
-import Layout from './Layout.jsx'
-import Home from './Home.jsx'
-import DistributionPerUserChart from './DistributionPerUserChart.jsx'
-import DistributionPerNumGuessesChart from './DistributionPerNumGuessesChart.jsx'
-import NoMatch from './NoMatch.jsx'
+import Layout from './components/Layout.jsx'
+import Home from './components/Home.jsx'
+import DistributionPerUserChart from './components/DistributionPerUserChart.jsx'
+import DistributionPerNumGuessesChart from './components/DistributionPerNumGuessesChart.jsx'
+import NoMatch from './components/NoMatch.jsx'
 
 function App() {
   const fetchOptions = {
