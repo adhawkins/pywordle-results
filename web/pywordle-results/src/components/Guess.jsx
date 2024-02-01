@@ -6,17 +6,21 @@ function Guess(props) {
 
 	return (
 		<Row>
-			<Col>
-				{props.guess.guess_num}&nbsp;-&nbsp;
+			<Col className="col-1 text-end">
+				{props.guess.guess_num}
+			</Col>
+			<Col className="col-3">
 				{squares[props.guess.result1]}
 				{squares[props.guess.result2]}
 				{squares[props.guess.result3]}
 				{squares[props.guess.result4]}
 				{squares[props.guess.result5]}
-				- {props.guess.num_words}
-				{props.displayGuess && ` - ${props.guess.guess}`}
 			</Col>
-		</Row>
+			<Col className="col-2">
+				{props.guess.num_words}
+			</Col>
+			{props.displayGuess && <Col className="col-1">{props.guess.guess}</Col>}
+		</Row >
 	)
 }
 
