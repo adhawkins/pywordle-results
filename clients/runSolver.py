@@ -37,6 +37,7 @@ def storeResult(base_url, game, user, guesses):
     for guess in guesses:
         guessData = {
             "guess_num": guessNumber,
+            "num_words": guess.NumWords(),
             "guess": guess.Guess(),
             "result1": str(guess.Matches()[0].value),
             "result2": str(guess.Matches()[1].value),

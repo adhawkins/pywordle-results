@@ -296,6 +296,13 @@ guessInfoArgs.add_argument(
     location="json",
 )
 guessInfoArgs.add_argument(
+    "num_words",
+    type=int,
+    required=True,
+    help="No number of words provided",
+    location="json",
+)
+guessInfoArgs.add_argument(
     "guess",
     type=str,
     required=True,
@@ -343,6 +350,7 @@ guess_fields = {
     "result": fields.Integer,
     "game": fields.Integer,
     "guess_num": fields.Integer,
+    "num_words": fields.Integer,
     "guess": fields.String,
     "result1": fields.String,
     "result2": fields.String,
@@ -372,6 +380,7 @@ class GuessListAPI(Resource):
                 result=result,
                 game=game,
                 guess_num=args["guess_num"],
+                num_words=args["num_words"],
                 guess=args["guess"],
                 result1=args["result1"],
                 result2=args["result2"],

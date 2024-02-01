@@ -13,6 +13,7 @@ function Guess(props) {
 				{squares[props.guess.result3]}
 				{squares[props.guess.result4]}
 				{squares[props.guess.result5]}
+				- {props.guess.num_words}
 				{props.displayGuess && ` - ${props.guess.guess}`}
 			</Col>
 		</Row>

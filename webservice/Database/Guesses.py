@@ -18,6 +18,7 @@ class Guesses(Base):
         autoincrement=False,
     )
     guess_num: Mapped[int]
+    num_words: Mapped[int] = mapped_column(server_default="0")
     guess: Mapped[str]
     result1: Mapped[str]
     result2: Mapped[str]
