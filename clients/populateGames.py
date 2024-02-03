@@ -15,13 +15,16 @@ def gameInDatabase(date, games):
     return len(result) != 0
 
 
+def debugPrint(message, debug):
+    if debug:
+        click.echo(message)
+
+
 @click.command()
 @click.pass_context
 def populateGames(ctx):
     base_url = ctx.obj["BASE_URL"]
     debug = ctx.obj["DEBUG"]
-
-    print(f"Base: '{base_url}', debug: {debug}")
 
     basicAuth = requests.auth.HTTPBasicAuth("andy", "testing")
 
@@ -34,7 +37,7 @@ def populateGames(ctx):
         gameURL = f"https://www.nytimes.com/svc/wordle/v2/{gameDate}.json"
 
         if gameInDatabase(gameDate, games):
-            print(f"{gameDate} already present")
+            debugPrint(f"{gameDate} already present", debug)
         else:
             gameResponse = requests.get(gameURL, auth=basicAuth)
             if gameResponse.status_code == 200:
