@@ -29,7 +29,7 @@ function GameResults(props) {
 				.then((data) => {
 					setAPIData({
 						time: new Date().toLocaleTimeString(),
-						data: data.gameresults
+						data: data.gameresults.sort((a, b) => { return a.user - b.user }),
 					})
 				})
 		}
