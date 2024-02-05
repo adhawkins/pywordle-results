@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
+import Button from 'react-bootstrap/Button';
+import CopyToClipboard from 'react-copy-to-clipboard'
 
 import GameResults from './GameResults.jsx'
 
 function GameDetails(props) {
 	const [gameInfo, setGameInfo] = useState({});
 	const [apiData, setAPIData] = useState({});
+	const [clipboardString, setClipboardString] = useState("");
 
 	useEffect(() => {
 		if (apiData.hasOwnProperty('data')) {
@@ -37,6 +40,41 @@ function GameDetails(props) {
 		}
 	}, [props.selectedGame]);
 
+	function onClipboardInfoChanged(clipboardInfo) {
+		let newClipboardString = "";
+
+		clipboardInfo.forEach((info) => {
+			if (info.data.length) {
+				newClipboardString += `${info.user}\n\n`;
+				newClipboardString += `Wordle ${gameInfo.id} ${info.data.length <= 6 ? info.data.length : 'x'}/6\n\n`;
+
+				let line = 0;
+
+				info.data.forEach((data) => {
+					if (props.displayGuess) {
+						newClipboardString += `\`${data.guessNumber.toString().padStart(2, '0')}\`  - ${data.data} - ||\`${data.guess}\`|| - ${data.numWords}\n`;
+
+						line++;
+						if (line == 6 && info.data.length > 6) {
+							newClipboardString += "`===================================`\n";
+						}
+					} else {
+						newClipboardString += `${data.guessNumber.toString().padStart(2, '0')}  - ${data.data} - ${data.numWords}\n`;
+
+						line++;
+						if (line == 6 && info.data.length > 6) {
+							newClipboardString += "===================\n";
+						}
+					}
+				})
+
+				newClipboardString += "\n";
+			}
+		});
+
+		setClipboardString(newClipboardString);
+	}
+
 	return (
 		<Row>
 			<Col sm={2}>
@@ -44,9 +82,12 @@ function GameDetails(props) {
 				<p>ID: {gameInfo.id}</p>
 				<p>Date: {gameInfo.date}</p>
 				{props.displayGuess && <p>Solution: {gameInfo.solution}</p>}
+				<CopyToClipboard text={clipboardString}>
+					<Button>Copy</Button>
+				</CopyToClipboard>
 			</Col>
 			<Col>
-				<GameResults fetchOptions={props.fetchOptions} selectedGame={props.selectedGame} displayGuess={props.displayGuess} />
+				<GameResults fetchOptions={props.fetchOptions} selectedGame={props.selectedGame} displayGuess={props.displayGuess} onClipboardInfoChanged={onClipboardInfoChanged} />
 			</Col>
 		</Row>
 	)

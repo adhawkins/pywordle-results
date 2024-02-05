@@ -9,11 +9,12 @@ function GameResult(props) {
 	const [apiData, setAPIData] = useState({});
 	const [displayResult, setDisplayResult] = useState("");
 	const [guesses, setGuesses] = useState([]);
+	const [clipboardInfo, setClipboardInfo] = useState([]);
 
 	useEffect(() => {
 		if (apiData.hasOwnProperty('data') && apiData.data.length) {
 			const newGuesses = apiData.data.map((element, key) =>
-				<Guess key={element.guess_num} guess={element} displayGuess={props.displayGuess} />
+				<Guess key={element.guess_num} guess={element} displayGuess={props.displayGuess} onClipboardInfoChanged={onClipboardInfoChanged} />
 			);
 
 			setGuesses(newGuesses);
@@ -46,6 +47,18 @@ function GameResult(props) {
 
 		setDisplayResult(result);
 	}, [props.result]);
+
+	function onClipboardInfoChanged(newClipboardInfo) {
+		const currentInfo = clipboardInfo;
+		currentInfo[newClipboardInfo.guessNumber - 1] = newClipboardInfo;
+		setClipboardInfo(currentInfo);
+
+		props.onClipboardInfoChanged({
+			result: props.result.id,
+			user: props.result['userdetails.fullname'],
+			data: currentInfo,
+		});
+	}
 
 	return (
 		<Row>

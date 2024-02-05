@@ -8,13 +8,14 @@ import GameResult from './GameResult.jsx';
 function GameResults(props) {
 	const [apiData, setAPIData] = useState({});
 	const [resultList, setResultList] = useState([]);
+	const [clipboardInfo, setClipboardInfo] = useState([]);
 
 	useEffect(() => {
 		if (apiData.hasOwnProperty('data')) {
 			setResultList(apiData.data.map((item, key) =>
 				<Row className="mb-3" key={item.id}>
 					<Col>
-						<GameResult result={item} fetchOptions={props.fetchOptions} displayGuess={props.displayGuess} />
+						<GameResult result={item} fetchOptions={props.fetchOptions} displayGuess={props.displayGuess} onClipboardInfoChanged={onClipboardInfoChanged} />
 					</Col>
 				</Row>
 			));
@@ -34,10 +35,30 @@ function GameResults(props) {
 				})
 		}
 
+		setClipboardInfo([]);
+
 		if (props.selectedGame != -1) {
 			fetchData();
 		}
 	}, [props.selectedGame]);
+
+	function onClipboardInfoChanged(newClipboardInfo) {
+		const currentClipboardInfo = clipboardInfo;
+		const thisInfo = currentClipboardInfo.find((value) => {
+			return value.result == newClipboardInfo.result;
+		});
+
+		if (thisInfo) {
+			thisInfo.user = newClipboardInfo.user;
+			thisInfo.data = newClipboardInfo.data;
+		} else {
+			currentClipboardInfo.push(newClipboardInfo);
+		}
+
+		setClipboardInfo(currentClipboardInfo);
+
+		props.onClipboardInfoChanged(clipboardInfo);
+	}
 
 	return (
 		<div>
