@@ -1,7 +1,8 @@
 import './App.css'
 import { BrowserRouter, Routes, Route } from "react-router-dom"
+import Container from 'react-bootstrap/Container';
 
-import Layout from './components/Layout.jsx'
+import Header from './components/Header.jsx'
 import Home from './components/Home.jsx'
 import DistributionPerUserChart from './components/DistributionPerUserChart.jsx'
 import DistributionPerNumGuessesChart from './components/DistributionPerNumGuessesChart.jsx'
@@ -19,18 +20,19 @@ function App() {
 
   return (
     <>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Layout />} >
-            <Route index element={<Home />} />
+      <Container fluid className="vh-100 vw-100">
+        <BrowserRouter>
+          <Header />
+          <Routes>
+            <Route exact path="/" element={<Home />} />
             <Route path="per-user" element={<DistributionPerUserChart fetchOptions={fetchOptions} />} />
             <Route path="per-guesses" element={<DistributionPerNumGuessesChart fetchOptions={fetchOptions} />} />
             <Route path="game-info" element={<GameInfo fetchOptions={fetchOptions} />} />
             <Route path="streak" element={<StreakChart fetchOptions={fetchOptions} />} />
             <Route path="*" element={<NoMatch />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+          </Routes>
+        </BrowserRouter>
+      </Container>
     </>
   )
 }

@@ -13,12 +13,20 @@ function GameResults(props) {
 	useEffect(() => {
 		if (apiData.hasOwnProperty('data')) {
 			setResultList(apiData.data.map((item, key) =>
-				<Row className="mb-3" key={item.id}>
+				<Row key={item.id}>
 					<Col>
 						<GameResult result={item} fetchOptions={props.fetchOptions} displayGuess={props.displayGuess} onClipboardInfoChanged={onClipboardInfoChanged} />
 					</Col>
-				</Row>
+				</Row >
 			));
+		} else {
+			setResultList(
+				<Row>
+					<Col>
+						&nbsp;
+					</Col>
+				</Row>
+			);
 		}
 	}, [apiData, props.displayGuess]);
 

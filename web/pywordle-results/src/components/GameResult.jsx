@@ -61,8 +61,8 @@ function GameResult(props) {
 	}
 
 	return (
-		<Row>
-			<Col>
+		<Row className="py-1">
+			<Col sm={5}>
 				{displayResult}
 			</Col>
 			<Col>

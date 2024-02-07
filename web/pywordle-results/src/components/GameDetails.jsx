@@ -77,7 +77,7 @@ function GameDetails(props) {
 
 	return (
 		<Row>
-			<Col sm={2}>
+			<Col sm={3}>
 				<p>Game details for {props.selectedGame}</p>
 				<p>ID: {gameInfo.id}</p>
 				<p>Date: {gameInfo.date}</p>

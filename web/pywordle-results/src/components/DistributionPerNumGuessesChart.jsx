@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
 import ReactDOM from 'react-dom/client';
 import { AgChartsReact } from 'ag-charts-react';
 import PropTypes from 'prop-types';
@@ -124,7 +126,13 @@ const DistributionPerNumGuessesChart = (props) => {
   }, []);
 
   return (
-    <AgChartsReact options={chartOptions} />
+    <>
+      <Row>
+        <Col>
+          <AgChartsReact options={chartOptions} />
+        </Col>
+      </Row>
+    </>
   );
 }
 
