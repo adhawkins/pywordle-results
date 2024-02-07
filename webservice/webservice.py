@@ -284,7 +284,7 @@ class ResultAPI(Resource):
     @auth.login_required
     def get(self, id):
         result = db.get_or_404(Database.GameResults, id)
-        return {"result": marshal(result, game_result_fields)}
+        return {"result": marshal(result, result_fields)}
 
 
 guessInfoArgs = reqparse.RequestParser()
