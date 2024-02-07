@@ -29,6 +29,9 @@ function Layout() {
 										<Link to="/per-guesses">Graph by Number of Guesses</Link>
 									</li>
 									<li>
+										<Link to="/streak">Streak history</Link>
+									</li>
+									<li>
 										<Link to="/game-info">Game Info</Link>
 									</li>
 								</ul>
