@@ -43,11 +43,19 @@ userInfoArgs.add_argument(
     help="No full name provided",
     location="json",
 )
+userInfoArgs.add_argument(
+    "telegram_id",
+    type=int,
+    required=False,
+    help="No telegram ID provided",
+    location="json",
+)
 
 user_fields = {
     "username": fields.String,
     "fullname": fields.String,
     "id": fields.Integer,
+    "telegram_id": fields.Integer,
     "uri": fields.Url("user_info"),
 }
 
@@ -64,7 +72,15 @@ class UsersListAPI(Resource):
     def post(self):
         try:
             args = userInfoArgs.parse_args()
-            user = Database.Users(username=args["username"], fullname=args["fullname"])
+
+            user = Database.Users(
+                username=args["username"],
+                fullname=args["fullname"],
+            )
+
+            if "telegram_id" in args:
+                user.telegram_id = args["telegram_id"]
+
             db.session.add(user)
             db.session.commit()
             return redirect(url_for("user_info", id=user.id))
@@ -94,6 +110,10 @@ class UserAPI(Resource):
             user = db.get_or_404(Database.Users, id)
             user.username = args["username"]
             user.fullname = args["fullname"]
+
+            if "telegram_id" in args:
+                user.telegram_id = args["telegram_id"]
+
             db.session.add(user)
             db.session.commit()
 

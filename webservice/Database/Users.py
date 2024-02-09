@@ -10,3 +10,4 @@ class Users(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(unique=True)
     fullname: Mapped[str]
+    telegram_id: Mapped[int] = mapped_column(unique=True, nullable=True)
