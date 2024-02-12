@@ -505,6 +505,75 @@ class TelegramGroupAPI(Resource):
             return {"error": str(e.orig)}, 409
 
 
+telegram_group_member_fields = {
+    "id": fields.Integer,
+    "group": fields.Integer,
+    "user": fields.Integer,
+    "uri": fields.Url("telegram_group_members_info"),
+    "userdetails.username": fields.String,
+    "userdetails.fullname": fields.String,
+    "telegramgroupdetails.title": fields.String,
+}
+
+telegramGroupMemberInfoArgs = reqparse.RequestParser()
+telegramGroupMemberInfoArgs.add_argument(
+    "user",
+    type=int,
+    required=True,
+    help="No user ID provided",
+    location="json",
+)
+
+
+class TelegramGroupMembersListAPI(Resource):
+    @auth.login_required
+    def get(self, group):
+        members = db.session.execute(
+            db.select(Database.TelegramGroupMembers)
+            .where(Database.TelegramGroupMembers.group == group)
+            .order_by(Database.TelegramGroupMembers.id)
+        ).scalars()
+        return {
+            "telegram_group_members": [
+                marshal(member, telegram_group_member_fields) for member in members
+            ]
+        }
+
+    @auth.login_required
+    def post(self, group):
+        try:
+            args = telegramGroupMemberInfoArgs.parse_args()
+            telegramGroupMember = Database.TelegramGroupMembers(
+                group=group, user=args["user"]
+            )
+            db.session.add(telegramGroupMember)
+            db.session.commit()
+            return redirect(
+                url_for(
+                    "telegram_group_members_info",
+                    group=group,
+                    id=telegramGroupMember.id,
+                )
+            )
+        except IntegrityError as e:
+            return {"error": str(e.orig)}, 409
+
+
+class TelegramGroupMembersAPI(Resource):
+    @auth.login_required
+    def get(self, group, id):
+        user = db.get_or_404(Database.TelegramGroupMembers, id)
+        return {"user": marshal(user, telegram_group_member_fields)}
+
+    @auth.login_required
+    def delete(self, group, id):
+        telegramGroupMember = db.get_or_404(Database.TelegramGroupMembers, id)
+        db.session.delete(telegramGroupMember)
+        db.session.commit()
+
+        return redirect(url_for("telegram_group_members_list", group=group))
+
+
 api.add_resource(UsersListAPI, f"{API_BASE}/users", endpoint="users_list")
 api.add_resource(UserAPI, f"{API_BASE}/users/<int:id>", endpoint="user_info")
 
@@ -551,4 +620,15 @@ api.add_resource(
     TelegramGroupAPI,
     f"{API_BASE}/telegram_groups/<int:id>",
     endpoint="telegram_group_info",
+)
+
+api.add_resource(
+    TelegramGroupMembersListAPI,
+    f"{API_BASE}/telegram_groups/<int:group>/members",
+    endpoint="telegram_group_members_list",
+)
+api.add_resource(
+    TelegramGroupMembersAPI,
+    f"{API_BASE}/telegram_groups/<int:group>/members/<int:id>",
+    endpoint="telegram_group_members_info",
 )
