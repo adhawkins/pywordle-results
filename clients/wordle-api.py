@@ -7,6 +7,7 @@ from createUsers import createUsers
 from importResults import importResults
 from populateGames import populateGames
 from runSolver import runSolver
+from telegramBot import telegramBot
 
 
 @click.group()
@@ -25,6 +26,7 @@ cli.add_command(createUsers)
 cli.add_command(importResults)
 cli.add_command(populateGames)
 cli.add_command(runSolver)
+cli.add_command(telegramBot)
 
 if __name__ == "__main__":
     cli(obj={})
