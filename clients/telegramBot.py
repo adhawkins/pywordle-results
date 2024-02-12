@@ -35,6 +35,30 @@ def addGroup(group, title):
     return requests.post(url, json=telegramGroup, auth=basicAuth)
 
 
+def findGroup(group):
+    url = f"{base_url}telegram_groups?groupid={group}"
+
+    response = requests.get(url, auth=basicAuth)
+    if response:
+        foundGroups = response.json()["telegram_groups"]
+        if len(foundGroups) == 1:
+            return foundGroups[0]
+
+    return None
+
+
+def removeGroup(group):
+    foundGroup = findGroup(group)
+
+    if foundGroup:
+        url = f"{base_url}telegram_groups/{foundGroup['id']}"
+
+        response = requests.delete(url, auth=basicAuth)
+        return response
+
+    return None
+
+
 async def botMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.my_chat_member.chat.type == ChatType.GROUP:
         message = "What happened?"
@@ -47,6 +71,13 @@ async def botMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 update.my_chat_member.chat.id, update.my_chat_member.chat.title
             )
             message = f"Member status in group {update.my_chat_member.chat.title} ({update.my_chat_member.new_chat_member.status}) - {result.status_code}"
+
+        elif update.my_chat_member.new_chat_member.status == ChatMemberStatus.LEFT:
+            result = removeGroup(update.my_chat_member.chat.id)
+            print(
+                f"Left group {update.my_chat_member.chat.title} ({update.my_chat_member.chat.type}), result: {result.status_code}"
+            )
+            message = ""
 
         if message:
             await context.bot.send_message(
