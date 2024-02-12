@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api, Resource, fields, marshal, reqparse, inputs
 from sqlalchemy.exc import IntegrityError
@@ -452,9 +452,13 @@ telegramGroupInfoArgs.add_argument(
 class TelegramGroupListAPI(Resource):
     @auth.login_required
     def get(self):
-        groups = db.session.execute(
-            db.select(Database.TelegramGroups).order_by(Database.TelegramGroups.id)
-        ).scalars()
+        groupID = request.args.get("groupid", default=None, type=int)
+
+        query = db.select(Database.TelegramGroups).order_by(Database.TelegramGroups.id)
+        if groupID:
+            query = query.where(Database.TelegramGroups.group == groupID)
+
+        groups = db.session.execute(query).scalars()
         return {
             "telegram_groups": [
                 marshal(group, telegram_group_fields) for group in groups
