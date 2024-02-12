@@ -7,6 +7,7 @@ from .Games import Games
 from .GameResults import GameResults
 from .Guesses import Guesses
 from .Users import Users
+from .TelegramGroups import TelegramGroups
 
 
 @event.listens_for(Engine, "connect")
