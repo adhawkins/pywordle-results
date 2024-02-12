@@ -63,9 +63,16 @@ user_fields = {
 class UsersListAPI(Resource):
     @auth.login_required
     def get(self):
-        users = db.session.execute(
-            db.select(Database.Users).order_by(Database.Users.id)
-        ).scalars()
+        telegramID = request.args.get("telegramid", default=None, type=int)
+        fullName = request.args.get("fullname", default=None, type=str)
+
+        query = db.select(Database.Users).order_by(Database.Users.id)
+        if telegramID:
+            query = query.where(Database.Users.telegram_id == telegramID)
+        if fullName:
+            query = query.where(Database.Users.fullname == fullName)
+
+        users = db.session.execute(query).scalars()
         return {"users": [marshal(user, user_fields) for user in users]}
 
     @auth.login_required
