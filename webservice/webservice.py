@@ -425,6 +425,86 @@ class GuessAPI(Resource):
         return {"guess": marshal(guess, guess_fields)}
 
 
+telegram_group_fields = {
+    "id": fields.Integer,
+    "group": fields.Integer,
+    "title": fields.String,
+    "uri": fields.Url("telegram_group_info"),
+}
+
+telegramGroupInfoArgs = reqparse.RequestParser()
+telegramGroupInfoArgs.add_argument(
+    "group",
+    type=int,
+    required=True,
+    help="No telegram group ID provided",
+    location="json",
+)
+telegramGroupInfoArgs.add_argument(
+    "title",
+    type=str,
+    required=True,
+    help="No telegram group title provided",
+    location="json",
+)
+
+
+class TelegramGroupListAPI(Resource):
+    @auth.login_required
+    def get(self):
+        groups = db.session.execute(
+            db.select(Database.TelegramGroups).order_by(Database.TelegramGroups.id)
+        ).scalars()
+        return {
+            "telegram_groups": [
+                marshal(group, telegram_group_fields) for group in groups
+            ]
+        }
+
+    @auth.login_required
+    def post(self):
+        try:
+            args = telegramGroupInfoArgs.parse_args()
+            telegramGroup = Database.TelegramGroups(
+                group=args["group"], title=args["title"]
+            )
+            db.session.add(telegramGroup)
+            db.session.commit()
+            return redirect(url_for("telegram_group_info", id=telegramGroup.id))
+        except IntegrityError as e:
+            return {"error": str(e.orig)}, 409
+
+
+class TelegramGroupAPI(Resource):
+    @auth.login_required
+    def get(self, id):
+        user = db.get_or_404(Database.TelegramGroups, id)
+        return {"user": marshal(user, telegram_group_fields)}
+
+    @auth.login_required
+    def delete(self, id):
+        telegramGroup = db.get_or_404(Database.TelegramGroups, id)
+        db.session.delete(telegramGroup)
+        db.session.commit()
+
+        return redirect(url_for("telegram_groups_list"))
+
+    @auth.login_required
+    def patch(self, id):
+        try:
+            args = telegramGroupInfoArgs.parse_args()
+
+            telegramGroup = db.get_or_404(Database.TelegramGroups, id)
+            telegramGroup.title = args["title"]
+
+            db.session.add(telegramGroup)
+            db.session.commit()
+
+            return redirect(url_for("telegram_group_info", id=telegramGroup.id))
+        except IntegrityError as e:
+            return {"error": str(e.orig)}, 409
+
+
 api.add_resource(UsersListAPI, f"{API_BASE}/users", endpoint="users_list")
 api.add_resource(UserAPI, f"{API_BASE}/users/<int:id>", endpoint="user_info")
 
@@ -462,4 +542,13 @@ api.add_resource(
     GuessAPI,
     f"{API_BASE}/games/<int:game>/results/<int:result>/guesses/<int:id>",
     endpoint="guess_info",
+)
+
+api.add_resource(
+    TelegramGroupListAPI, f"{API_BASE}/telegram_groups", endpoint="telegram_groups_list"
+)
+api.add_resource(
+    TelegramGroupAPI,
+    f"{API_BASE}/telegram_groups/<int:id>",
+    endpoint="telegram_group_info",
 )
