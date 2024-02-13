@@ -213,6 +213,16 @@ class GameAPI(Resource):
             return {"error": str(e.orig)}, 409
 
 
+class LatestGameAPI(Resource):
+
+    @auth.login_required
+    def get(self):
+        game = db.session.execute(
+            db.select(Database.Games).order_by(Database.Games.id.desc()).limit(1)
+        ).one()
+        return {"game": marshal(game[0], game_fields)}
+
+
 gameResultInfoArgs = reqparse.RequestParser()
 gameResultInfoArgs.add_argument(
     "user",
@@ -597,6 +607,9 @@ api.add_resource(UserAPI, f"{API_BASE}/users/<int:id>", endpoint="user_info")
 
 api.add_resource(GamesListAPI, f"{API_BASE}/games", endpoint="games_list")
 api.add_resource(GameAPI, f"{API_BASE}/games/<int:id>", endpoint="game_info")
+api.add_resource(
+    LatestGameAPI, f"{API_BASE}/games/latest", endpoint="latest_games_list"
+)
 
 api.add_resource(
     GameResultsListAPI,
