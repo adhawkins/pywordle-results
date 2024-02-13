@@ -140,6 +140,15 @@ def getUser(userName, telegramID, fullName):
     return createUser(userName, telegramID, fullName)
 
 
+def addUserToGroup(group, user):
+    group = findGroup(group)
+
+    if group:
+        url = f"{base_url}telegram_groups/{group['id']}/members"
+
+        response = requests.post(url, auth=basicAuth, json={"user": user})
+
+
 async def botMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.my_chat_member.chat.type == ChatType.GROUP:
         message = "What happened?"
@@ -182,6 +191,25 @@ async def groupMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{update.chat_member.new_chat_member.user.first_name} {update.chat_member.new_chat_member.user.last_name}",
     )
     print(f"Found user: {user['username']}")
+
+    if user:
+        message = "What happened?"
+        if (
+            update.chat_member.new_chat_member.status == ChatMemberStatus.ADMINISTRATOR
+            or update.chat_member.new_chat_member.status == ChatMemberStatus.MEMBER
+        ):
+            message = f"Thank you for adding me to the '{update.my_chat_member.chat.title}' group."
+            if update.my_chat_member.new_chat_member.status == ChatMemberStatus.MEMBER:
+                message += " In order to track people joining or leaving the group, I need to be an Administrator of it. Please make me an Administrator of this group."
+            else:
+                message += " As an Administrator of the group I can now track people joining and leaving correctly."
+
+            addUserToGroup(update.chat_member.chat.id, user["id"])
+
+        await context.bot.send_message(
+            chat_id=update.chat_member.chat.id,
+            text=message,
+        )
 
 
 @click.command()
