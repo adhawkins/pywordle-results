@@ -149,6 +149,21 @@ def addUserToGroup(group, user):
         response = requests.post(url, auth=basicAuth, json={"user": user})
 
 
+def removeUserFromGroup(group, user):
+    group = findGroup(group)
+
+    if group:
+        url = f"{base_url}telegram_groups/{group['id']}/members?userid={user}"
+        result = requests.get(url, auth=basicAuth)
+        if result:
+            members = result.json()["telegram_group_members"]
+
+            if members:
+                url = f"{base_url}telegram_groups/{group['id']}/members/{members[0]['id']}"
+
+                result = requests.delete(url, auth=basicAuth)
+
+
 async def botMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.my_chat_member.chat.type == ChatType.GROUP:
         message = "What happened?"
@@ -205,6 +220,10 @@ async def groupMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 message += " As an Administrator of the group I can now track people joining and leaving correctly."
 
             addUserToGroup(update.chat_member.chat.id, user["id"])
+        elif update.chat_member.new_chat_member.status == ChatMemberStatus.LEFT:
+            message = f"User {update.chat_member.new_chat_member.user.first_name} {update.chat_member.new_chat_member.user.last_name} left group {update.chat_member.chat.title} ({update.chat_member.chat.type})"
+
+            removeUserFromGroup(update.chat_member.chat.id, user["id"])
 
         await context.bot.send_message(
             chat_id=update.chat_member.chat.id,

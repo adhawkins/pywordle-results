@@ -539,10 +539,17 @@ telegramGroupMemberInfoArgs.add_argument(
 class TelegramGroupMembersListAPI(Resource):
     @auth.login_required
     def get(self, group):
+        userID = request.args.get("userid", default=None, type=int)
+
+        query = db.select(Database.TelegramGroupMembers).where(
+            Database.TelegramGroupMembers.group == group
+        )
+
+        if userID:
+            query = query.where(Database.TelegramGroupMembers.user == userID)
+
         members = db.session.execute(
-            db.select(Database.TelegramGroupMembers)
-            .where(Database.TelegramGroupMembers.group == group)
-            .order_by(Database.TelegramGroupMembers.id)
+            query.order_by(Database.TelegramGroupMembers.id)
         ).scalars()
         return {
             "telegram_group_members": [
