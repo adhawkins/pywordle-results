@@ -6,12 +6,16 @@ import click
 
 import Token
 
+import re
+
 from telegram import Update
 from telegram.constants import ChatMemberStatus, ChatType
 from telegram.ext import (
     ApplicationBuilder,
     ContextTypes,
     ChatMemberHandler,
+    MessageHandler,
+    filters,
 )
 
 base_url = ""
@@ -164,6 +168,34 @@ def removeUserFromGroup(group, user):
                 result = requests.delete(url, auth=basicAuth)
 
 
+def addGameResult(gameResult):
+    url = f"{base_url}games/{gameResult['game']}/results"
+
+    result = requests.post(url, json=gameResult, auth=basicAuth)
+
+    if result:
+        return result.json()["gameresult"]
+
+    return None
+
+
+def addGuess(game, resultID, guessNumber, result):
+    guessURL = f"{base_url}games/{game}/results/{resultID}/guesses"
+
+    guessData = {
+        "guess_num": guessNumber,
+        "num_words": 0,
+        "guess": "",
+        "result1": str(result[0]),
+        "result2": str(result[1]),
+        "result3": str(result[2]),
+        "result4": str(result[3]),
+        "result5": str(result[4]),
+    }
+
+    guessResult = requests.post(guessURL, json=guessData, auth=basicAuth)
+
+
 async def botMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.my_chat_member.chat.type == ChatType.GROUP:
         message = "What happened?"
@@ -231,6 +263,87 @@ async def groupMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+async def chatMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    blocks = [
+        "\u2B1C\u2B1B",  # Black / white square
+        "\U0001F7E8",  # Yellow square
+        "\U0001F7E9",  # Green square
+    ]
+
+    user = findUserWithTelegramID(update.message.from_user.id)
+    if user:
+        addUserToGroup(update.message.chat.id, user["id"])
+
+        lines = update.message.text.splitlines()
+
+        firstLine = lines[0]
+
+        match = re.search("^Wordle \d+ [\dX]\/\d\*?$", firstLine)
+        if match:
+            words = firstLine.split()
+            numGuesses = words[2].split("/")
+
+            del lines[0]
+
+            guesses = []
+
+            linesValid = True
+
+            for line in lines:
+                if line:
+                    thisGuess = []
+                    for char in line:
+                        blockNum = 0
+
+                        for block in blocks:
+                            if char in block:
+                                resultCode = blockNum
+                                thisGuess.append(resultCode)
+
+                            blockNum += 1
+
+                    if len(thisGuess) == 5:
+                        guesses.append(thisGuess)
+                    else:
+                        print(f"Invalid line length: {len(thisGuess)}")
+
+                        linesValid = False
+                        break
+
+            if linesValid and (
+                (numGuesses[0] == "X" and len(guesses) >= 6)
+                or (numGuesses[0] != "X" and int(numGuesses[0]) == len(guesses))
+            ):
+                gameResult = {
+                    "user": user["id"],
+                    "game": words[1],
+                    "guesses": numGuesses[0] if numGuesses[0] != "X" else 0,
+                    "success": 1 if numGuesses[0] != "X" else 0,
+                }
+
+                result = addGameResult(gameResult)
+
+                guessNumber = 1
+
+                if result:
+                    for guess in guesses:
+                        addGuess(words[1], result["id"], guessNumber, guess)
+
+                        guessNumber += 1
+
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=f"Wordle result for '{user['fullname']}' game {words[1]}: {numGuesses[0]}",
+                )
+            else:
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=f"@{update.message.from_user.username}, that looked like a Wordle result, but I couldn't parse it properly",
+                )
+    else:
+        print(f"Can't find user with id {update.message.from_user.id}")
+
+
 @click.command()
 @click.pass_context
 def telegramBot(ctx):
@@ -251,5 +364,8 @@ def telegramBot(ctx):
         groupMembership, ChatMemberHandler.CHAT_MEMBER
     )
     application.add_handler(groupMembershipHandler)
+
+    chatMessageHandler = MessageHandler(filters.TEXT & (~filters.COMMAND), chatMessage)
+    application.add_handler(chatMessageHandler)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
