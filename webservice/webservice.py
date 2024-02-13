@@ -56,7 +56,7 @@ user_fields = {
     "fullname": fields.String,
     "id": fields.Integer,
     "telegram_id": fields.Integer,
-    "uri": fields.Url("user_info"),
+    "uri": fields.Url("user_info", absolute=True),
 }
 
 
@@ -156,7 +156,7 @@ game_fields = {
     "id": fields.Integer,
     "date": fields.String,
     "solution": fields.String,
-    "uri": fields.Url("game_info"),
+    "uri": fields.Url("game_info", absolute=True),
 }
 
 
@@ -246,7 +246,7 @@ game_result_fields = {
     "gamedetails.solution": fields.String,
     "guesses": fields.Integer,
     "success": fields.Integer,
-    "uri": fields.Url("game_result_info"),
+    "uri": fields.Url("game_result_info", absolute=True),
 }
 
 
@@ -296,7 +296,7 @@ result_fields = {
     "gamedetails.solution": fields.String,
     "guesses": fields.Integer,
     "success": fields.Integer,
-    "uri": fields.Url("result_info"),
+    "uri": fields.Url("result_info", absolute=True),
 }
 
 
@@ -384,7 +384,7 @@ guess_fields = {
     "result3": fields.String,
     "result4": fields.String,
     "result5": fields.String,
-    "uri": fields.Url("guess_info"),
+    "uri": fields.Url("guess_info", absolute=True),
     "gamedetails.solution": fields.String,
 }
 
@@ -436,7 +436,7 @@ telegram_group_fields = {
     "id": fields.Integer,
     "group": fields.Integer,
     "title": fields.String,
-    "uri": fields.Url("telegram_group_info"),
+    "uri": fields.Url("telegram_group_info", absolute=True),
 }
 
 telegramGroupInfoArgs = reqparse.RequestParser()
@@ -520,7 +520,7 @@ telegram_group_member_fields = {
     "id": fields.Integer,
     "group": fields.Integer,
     "user": fields.Integer,
-    "uri": fields.Url("telegram_group_members_info"),
+    "uri": fields.Url("telegram_group_members_info", absolute=True),
     "userdetails.username": fields.String,
     "userdetails.fullname": fields.String,
     "telegramgroupdetails.title": fields.String,
