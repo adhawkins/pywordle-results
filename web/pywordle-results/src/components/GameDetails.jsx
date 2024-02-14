@@ -43,6 +43,8 @@ function GameDetails(props) {
 	function onClipboardInfoChanged(clipboardInfo) {
 		let newClipboardString = "";
 
+		clipboardInfo.sort((a, b) => { return a.userID - b.userID });
+
 		clipboardInfo.forEach((info) => {
 			if (info.data.length) {
 				newClipboardString += `${info.user}\n\n`;

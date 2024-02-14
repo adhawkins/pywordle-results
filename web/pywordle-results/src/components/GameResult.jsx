@@ -56,6 +56,7 @@ function GameResult(props) {
 		props.onClipboardInfoChanged({
 			result: props.result.id,
 			user: props.result['userdetails.fullname'],
+			userID: props.result['user'],
 			data: currentInfo,
 		});
 	}
