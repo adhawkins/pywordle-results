@@ -8,18 +8,26 @@ import Token
 
 import re
 
-from telegram import Update
-from telegram.constants import ChatMemberStatus, ChatType
+from telegram import Update, BotCommand
+from telegram.constants import ChatMemberStatus, ChatType, ParseMode
 from telegram.ext import (
+    Application,
     ApplicationBuilder,
     ContextTypes,
     ChatMemberHandler,
+    CommandHandler,
     MessageHandler,
     filters,
 )
 
 base_url = ""
 basicAuth = requests.auth.HTTPBasicAuth("andy", "testing")
+
+blocks = [
+    "\u2B1C\u2B1B",  # Black / white square
+    "\U0001F7E8",  # Yellow square
+    "\U0001F7E9",  # Green square
+]
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.WARNING
@@ -196,6 +204,51 @@ def addGuess(game, resultID, guessNumber, result):
     guessResult = requests.post(guessURL, json=guessData, auth=basicAuth)
 
 
+def latestGameID():
+    url = f"{base_url}games/latest"
+
+    response = requests.get(url, auth=basicAuth)
+    if response:
+        game = response.json()["game"]
+        return game["id"]
+
+    return None
+
+
+def fetchResults(game):
+    results = requests.get(f"{base_url}games/{game}/results", auth=basicAuth)
+    if results:
+        return sorted(results.json()["gameresults"], key=lambda d: d["user"])
+
+    return None
+
+
+def fetchGroupMembers(telegramGroupID):
+    group = findGroup(telegramGroupID)
+    if group:
+        results = requests.get(
+            f"{base_url}telegram_groups/{group['id']}/members", auth=basicAuth
+        )
+        if results:
+            members = []
+            for member in results.json()["telegram_group_members"]:
+                members.append(member["user"])
+
+            return members
+
+    return None
+
+
+def fetchGuesses(gameID, resultID):
+    results = requests.get(
+        f"{base_url}games/{gameID}/results/{resultID}/guesses", auth=basicAuth
+    )
+    if results:
+        return results.json()["guesses"]
+
+    return None
+
+
 async def botMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.my_chat_member.chat.type == ChatType.GROUP:
         message = "What happened?"
@@ -264,12 +317,6 @@ async def groupMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def chatMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    blocks = [
-        "\u2B1C\u2B1B",  # Black / white square
-        "\U0001F7E8",  # Yellow square
-        "\U0001F7E9",  # Green square
-    ]
-
     user = findUserWithTelegramID(update.message.from_user.id)
     if user:
         addUserToGroup(update.message.chat.id, user["id"])
@@ -344,6 +391,85 @@ async def chatMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"Can't find user with id {update.message.from_user.id}")
 
 
+async def results(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) == 1:
+        try:
+            game = int(context.args[0])
+        except ValueError:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=f"Invalid game number '{context.args[0]}'",
+            )
+
+            return
+    else:
+        game = latestGameID()
+
+    results = fetchResults(game)
+
+    bots = [3, 4]
+
+    groupMembers = fetchGroupMembers(update.effective_chat.id)
+    if groupMembers:
+        groupMembers += bots
+    else:
+        groupMembers = bots
+
+    response = ""
+    if results:
+        for result in results:
+            if result["user"] in groupMembers:
+                if response:
+                    response += "\n"
+
+                response += f"{result['userdetails.fullname']}\nWordle {game} "
+                if result["success"]:
+                    response += f"{result['guesses']}/6"
+                else:
+                    response += "X/6"
+
+                response += "\n"
+
+                guesses = fetchGuesses(result["game"], result["id"])
+                if guesses:
+                    guessNum = 1
+
+                    response += "\n"
+                    for guess in guesses:
+                        if guessNum == 7:
+                            response += "`===========================`\n"
+
+                        response += f"`{guessNum:0>2}` \- {blocks[int(guess['result1'])][0]}{blocks[int(guess['result2'])][0]}{blocks[int(guess['result3'])][0]}{blocks[int(guess['result4'])][0]}{blocks[int(guess['result5'])][0]}"
+
+                        if guess["num_words"] and guess["guess"]:
+                            response += (
+                                f" \- `{guess['num_words']:>5}` \- ||{guess['guess']}||"
+                            )
+
+                        response += "\n"
+                        guessNum += 1
+
+    if response:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=response,
+            parse_mode=ParseMode.MARKDOWN_V2,
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"No results found for game {game}",
+        )
+
+
+async def postInitHandler(application: Application):
+    commands = [
+        BotCommand("results", "Display results"),
+    ]
+
+    await application.bot.set_my_commands(commands)
+
+
 @click.command()
 @click.pass_context
 def telegramBot(ctx):
@@ -351,9 +477,9 @@ def telegramBot(ctx):
 
     base_url = ctx.obj["BASE_URL"]
 
-    application = ApplicationBuilder().token(Token.Token).build()
-
-    bot = application.bot
+    application = (
+        ApplicationBuilder().token(Token.Token).post_init(postInitHandler).build()
+    )
 
     botMembershipHandler = ChatMemberHandler(
         botMembership, ChatMemberHandler.MY_CHAT_MEMBER
@@ -367,5 +493,8 @@ def telegramBot(ctx):
 
     chatMessageHandler = MessageHandler(filters.TEXT & (~filters.COMMAND), chatMessage)
     application.add_handler(chatMessageHandler)
+
+    resultsHandler = CommandHandler("results", results)
+    application.add_handler(resultsHandler)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
