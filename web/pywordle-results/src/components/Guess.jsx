@@ -27,7 +27,7 @@ function Guess(props) {
 				{squares[props.guess.result5]}
 			</Col>
 			<Col sm={1}>
-				{props.guess.num_words}
+				{props.guess.num_words != 0 && props.guess.num_words}
 			</Col>
 			{props.displayGuess && <Col>{props.guess.guess}</Col>}
 		</Row >
