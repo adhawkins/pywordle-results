@@ -1,6 +1,6 @@
 sqlalchemy
 Flask-SQLAlchemy
-Flask-RESTful
+Flask-restx
 flask-httpauth
 flask-cors
 flask-migrate

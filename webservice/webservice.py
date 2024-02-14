@@ -1,6 +1,6 @@
 from flask import Flask, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
-from flask_restful import Api, Resource, fields, marshal, reqparse, inputs
+from flask_restx import Api, Resource, fields, inputs
 from sqlalchemy.exc import IntegrityError
 from flask_migrate import Migrate
 from flask_cors import CORS
@@ -28,7 +28,7 @@ def verifyPassword(username, password):
     return username == "andy" and password == "testing"
 
 
-userInfoArgs = reqparse.RequestParser()
+userInfoArgs = api.parser()
 userInfoArgs.add_argument(
     "username",
     type=str,
@@ -51,17 +51,22 @@ userInfoArgs.add_argument(
     location="json",
 )
 
-user_fields = {
-    "username": fields.String,
-    "fullname": fields.String,
-    "id": fields.Integer,
-    "telegram_id": fields.Integer,
-    "uri": fields.Url("user_info", absolute=True),
-}
+user_fields = api.model(
+    "User",
+    {
+        "username": fields.String,
+        "fullname": fields.String,
+        "id": fields.Integer,
+        "telegram_id": fields.Integer,
+        "uri": fields.Url("user_info", absolute=True, scheme="https"),
+    },
+)
 
 
+@api.route(f"{API_BASE}/users", endpoint="users_list")
 class UsersListAPI(Resource):
     @auth.login_required
+    @api.marshal_list_with(user_fields, envelope="users")
     def get(self):
         telegramID = request.args.get("telegramid", default=None, type=int)
         fullName = request.args.get("fullname", default=None, type=str)
@@ -73,9 +78,10 @@ class UsersListAPI(Resource):
             query = query.where(Database.Users.fullname == fullName)
 
         users = db.session.execute(query).scalars()
-        return {"users": [marshal(user, user_fields) for user in users]}
+        return list(users)
 
     @auth.login_required
+    @api.expect(userInfoArgs)
     def post(self):
         try:
             args = userInfoArgs.parse_args()
@@ -95,11 +101,13 @@ class UsersListAPI(Resource):
             return {"error": str(e.orig)}, 409
 
 
+@api.route(f"{API_BASE}/users/<int:id>", endpoint="user_info")
 class UserAPI(Resource):
     @auth.login_required
+    @api.marshal_with(user_fields, envelope="user")
     def get(self, id):
         user = db.get_or_404(Database.Users, id)
-        return {"user": marshal(user, user_fields)}
+        return user
 
     @auth.login_required
     def delete(self, id):
@@ -110,6 +118,7 @@ class UserAPI(Resource):
         return redirect(url_for("users_list"))
 
     @auth.login_required
+    @api.expect(userInfoArgs)
     def patch(self, id):
         try:
             args = userInfoArgs.parse_args()
@@ -129,7 +138,7 @@ class UserAPI(Resource):
             return {"error": str(e.orig)}, 409
 
 
-gameInfoArgs = reqparse.RequestParser()
+gameInfoArgs = api.parser()
 gameInfoArgs.add_argument(
     "id",
     type=int,
@@ -152,23 +161,29 @@ gameInfoArgs.add_argument(
     location="json",
 )
 
-game_fields = {
-    "id": fields.Integer,
-    "date": fields.String,
-    "solution": fields.String,
-    "uri": fields.Url("game_info", absolute=True),
-}
+game_fields = api.model(
+    "Game",
+    {
+        "id": fields.Integer,
+        "date": fields.String,
+        "solution": fields.String,
+        "uri": fields.Url("game_info", absolute=True, scheme="https"),
+    },
+)
 
 
+@api.route(f"{API_BASE}/games", endpoint="games_list")
 class GamesListAPI(Resource):
     @auth.login_required
+    @api.marshal_list_with(game_fields, envelope="games")
     def get(self):
         games = db.session.execute(
             db.select(Database.Games).order_by(Database.Games.id)
         ).scalars()
-        return {"games": [marshal(game, game_fields) for game in games]}
+        return list(games)
 
     @auth.login_required
+    @api.expect(gameInfoArgs)
     def post(self):
         try:
             args = gameInfoArgs.parse_args()
@@ -182,11 +197,13 @@ class GamesListAPI(Resource):
             return {"error": str(e.orig)}, 409
 
 
+@api.route(f"{API_BASE}/games/<int:id>", endpoint="game_info")
 class GameAPI(Resource):
     @auth.login_required
+    @api.marshal_with(game_fields, envelope="game")
     def get(self, id):
         game = db.get_or_404(Database.Games, id)
-        return {"game": marshal(game, game_fields)}
+        return game
 
     @auth.login_required
     def delete(self, id):
@@ -197,6 +214,7 @@ class GameAPI(Resource):
         return redirect(url_for("games_list"))
 
     @auth.login_required
+    @api.expect(gameInfoArgs)
     def patch(self, id):
         try:
             args = gameInfoArgs.parse_args()
@@ -213,17 +231,19 @@ class GameAPI(Resource):
             return {"error": str(e.orig)}, 409
 
 
+@api.route(f"{API_BASE}/games/latest", endpoint="latest_games_list")
 class LatestGameAPI(Resource):
 
     @auth.login_required
+    @api.marshal_with(game_fields, envelope="game")
     def get(self):
         game = db.session.execute(
             db.select(Database.Games).order_by(Database.Games.id.desc()).limit(1)
         ).one()
-        return {"game": marshal(game[0], game_fields)}
+        return game[0]
 
 
-gameResultInfoArgs = reqparse.RequestParser()
+gameResultInfoArgs = api.parser()
 gameResultInfoArgs.add_argument(
     "user",
     type=int,
@@ -246,33 +266,37 @@ gameResultInfoArgs.add_argument(
     location="json",
 )
 
-game_result_fields = {
-    "id": fields.Integer,
-    "user": fields.Integer,
-    "userdetails.username": fields.String,
-    "userdetails.fullname": fields.String,
-    "game": fields.Integer,
-    "gamedetails.date": fields.String,
-    "gamedetails.solution": fields.String,
-    "guesses": fields.Integer,
-    "success": fields.Integer,
-    "uri": fields.Url("game_result_info", absolute=True),
-}
+game_result_fields = api.model(
+    "GameResult",
+    {
+        "id": fields.Integer,
+        "user": fields.Integer,
+        "userdetails.username": fields.String,
+        "userdetails.fullname": fields.String,
+        "game": fields.Integer,
+        "gamedetails.date": fields.String,
+        "gamedetails.solution": fields.String,
+        "guesses": fields.Integer,
+        "success": fields.Integer,
+        "uri": fields.Url("game_result_info", absolute=True, scheme="https"),
+    },
+)
 
 
+@api.route(f"{API_BASE}/games/<int:game>/results", endpoint="game_results_list")
 class GameResultsListAPI(Resource):
     @auth.login_required
+    @api.marshal_list_with(game_result_fields, envelope="gameresults")
     def get(self, game):
         results = db.session.execute(
             db.select(Database.GameResults)
             .where(Database.GameResults.game == game)
             .order_by(Database.GameResults.id)
         ).scalars()
-        return {
-            "gameresults": [marshal(result, game_result_fields) for result in results]
-        }
+        return list(results)
 
     @auth.login_required
+    @api.expect(gameResultInfoArgs)
     def post(self, game):
         try:
             args = gameResultInfoArgs.parse_args()
@@ -289,42 +313,51 @@ class GameResultsListAPI(Resource):
             return {"error": str(e.orig)}, 409
 
 
+@api.route(f"{API_BASE}/games/<int:game>/results/<int:id>", endpoint="game_result_info")
 class GameResultAPI(Resource):
     @auth.login_required
+    @api.marshal_with(game_result_fields, envelope="gameresult")
     def get(self, game, id):
         gameresult = db.get_or_404(Database.GameResults, id)
-        return {"gameresult": marshal(gameresult, game_result_fields)}
+        return gameresult
 
 
-result_fields = {
-    "id": fields.Integer,
-    "user": fields.Integer,
-    "userdetails.username": fields.String,
-    "userdetails.fullname": fields.String,
-    "game": fields.Integer,
-    "gamedetails.date": fields.String,
-    "gamedetails.solution": fields.String,
-    "guesses": fields.Integer,
-    "success": fields.Integer,
-    "uri": fields.Url("result_info", absolute=True),
-}
+result_fields = api.model(
+    "GameResult",
+    {
+        "id": fields.Integer,
+        "user": fields.Integer,
+        "userdetails.username": fields.String,
+        "userdetails.fullname": fields.String,
+        "game": fields.Integer,
+        "gamedetails.date": fields.String,
+        "gamedetails.solution": fields.String,
+        "guesses": fields.Integer,
+        "success": fields.Integer,
+        "uri": fields.Url("result_info", absolute=True, scheme="https"),
+    },
+)
 
 
+@api.route(f"{API_BASE}/results", endpoint="results_list")
 class ResultsListAPI(Resource):
     @auth.login_required
+    @api.marshal_list_with(result_fields, envelope="results")
     def get(self):
         results = db.session.execute(db.select(Database.GameResults)).scalars()
-        return {"results": [marshal(result, result_fields) for result in results]}
+        return list(results)
 
 
+@api.route(f"{API_BASE}/results/<int:id>", endpoint="result_info")
 class ResultAPI(Resource):
     @auth.login_required
+    @api.marshal_with(result_fields, envelope="result")
     def get(self, id):
         result = db.get_or_404(Database.GameResults, id)
-        return {"result": marshal(result, result_fields)}
+        return result
 
 
-guessInfoArgs = reqparse.RequestParser()
+guessInfoArgs = api.parser()
 guessInfoArgs.add_argument(
     "guess_num",
     type=int,
@@ -382,34 +415,42 @@ guessInfoArgs.add_argument(
     location="json",
 )
 
-guess_fields = {
-    "id": fields.Integer,
-    "result": fields.Integer,
-    "game": fields.Integer,
-    "guess_num": fields.Integer,
-    "num_words": fields.Integer,
-    "guess": fields.String,
-    "result1": fields.String,
-    "result2": fields.String,
-    "result3": fields.String,
-    "result4": fields.String,
-    "result5": fields.String,
-    "uri": fields.Url("guess_info", absolute=True),
-    "gamedetails.solution": fields.String,
-}
+guess_fields = api.model(
+    "Guess",
+    {
+        "id": fields.Integer,
+        "result": fields.Integer,
+        "game": fields.Integer,
+        "guess_num": fields.Integer,
+        "num_words": fields.Integer,
+        "guess": fields.String,
+        "result1": fields.String,
+        "result2": fields.String,
+        "result3": fields.String,
+        "result4": fields.String,
+        "result5": fields.String,
+        "uri": fields.Url("guess_info", absolute=True, scheme="https"),
+        "gamedetails.solution": fields.String,
+    },
+)
 
 
+@api.route(
+    f"{API_BASE}/games/<int:game>/results/<int:result>/guesses", endpoint="guess_list"
+)
 class GuessListAPI(Resource):
     @auth.login_required
+    @api.marshal_list_with(guess_fields, envelope="guesses")
     def get(self, game, result):
         guesses = db.session.execute(
             db.select(Database.Guesses)
             .where(Database.Guesses.result == result)
             .order_by(Database.Guesses.id)
         ).scalars()
-        return {"guesses": [marshal(guess, guess_fields) for guess in guesses]}
+        return list(guesses)
 
     @auth.login_required
+    @api.expect(guessInfoArgs)
     def post(self, game, result):
         try:
             args = guessInfoArgs.parse_args()
@@ -435,21 +476,29 @@ class GuessListAPI(Resource):
             return {"error": str(e.orig)}, 409
 
 
+@api.route(
+    f"{API_BASE}/games/<int:game>/results/<int:result>/guesses/<int:id>",
+    endpoint="guess_info",
+)
 class GuessAPI(Resource):
     @auth.login_required
+    @api.marshal_with(guess_fields, envelope="guess")
     def get(self, game, result, id):
         guess = db.get_or_404(Database.Guesses, id)
-        return {"guess": marshal(guess, guess_fields)}
+        return guess
 
 
-telegram_group_fields = {
-    "id": fields.Integer,
-    "group": fields.Integer,
-    "title": fields.String,
-    "uri": fields.Url("telegram_group_info", absolute=True),
-}
+telegram_group_fields = api.model(
+    "TelegramGoup",
+    {
+        "id": fields.Integer,
+        "group": fields.Integer,
+        "title": fields.String,
+        "uri": fields.Url("telegram_group_info", absolute=True, scheme="https"),
+    },
+)
 
-telegramGroupInfoArgs = reqparse.RequestParser()
+telegramGroupInfoArgs = api.parser()
 telegramGroupInfoArgs.add_argument(
     "group",
     type=int,
@@ -466,8 +515,10 @@ telegramGroupInfoArgs.add_argument(
 )
 
 
+@api.route(f"{API_BASE}/telegram_groups", endpoint="telegram_groups_list")
 class TelegramGroupListAPI(Resource):
     @auth.login_required
+    @api.marshal_list_with(telegram_group_fields, envelope="telegram_groups")
     def get(self):
         groupID = request.args.get("groupid", default=None, type=int)
 
@@ -476,13 +527,10 @@ class TelegramGroupListAPI(Resource):
             query = query.where(Database.TelegramGroups.group == groupID)
 
         groups = db.session.execute(query).scalars()
-        return {
-            "telegram_groups": [
-                marshal(group, telegram_group_fields) for group in groups
-            ]
-        }
+        return list(groups)
 
     @auth.login_required
+    @api.expect(telegramGroupInfoArgs)
     def post(self):
         try:
             args = telegramGroupInfoArgs.parse_args()
@@ -496,11 +544,13 @@ class TelegramGroupListAPI(Resource):
             return {"error": str(e.orig)}, 409
 
 
+@api.route(f"{API_BASE}/telegram_groups/<int:id>", endpoint="telegram_group_info")
 class TelegramGroupAPI(Resource):
     @auth.login_required
+    @api.marshal_with(telegram_group_fields, envelope="telegram_group")
     def get(self, id):
-        user = db.get_or_404(Database.TelegramGroups, id)
-        return {"user": marshal(user, telegram_group_fields)}
+        group = db.get_or_404(Database.TelegramGroups, id)
+        return group
 
     @auth.login_required
     def delete(self, id):
@@ -511,6 +561,7 @@ class TelegramGroupAPI(Resource):
         return redirect(url_for("telegram_groups_list"))
 
     @auth.login_required
+    @api.expect(telegramGroupInfoArgs)
     def patch(self, id):
         try:
             args = telegramGroupInfoArgs.parse_args()
@@ -526,17 +577,20 @@ class TelegramGroupAPI(Resource):
             return {"error": str(e.orig)}, 409
 
 
-telegram_group_member_fields = {
-    "id": fields.Integer,
-    "group": fields.Integer,
-    "user": fields.Integer,
-    "uri": fields.Url("telegram_group_members_info", absolute=True),
-    "userdetails.username": fields.String,
-    "userdetails.fullname": fields.String,
-    "telegramgroupdetails.title": fields.String,
-}
+telegram_group_member_fields = api.model(
+    "TelegramGroupMember",
+    {
+        "id": fields.Integer,
+        "group": fields.Integer,
+        "user": fields.Integer,
+        "uri": fields.Url("telegram_group_members_info", absolute=True, scheme="https"),
+        "userdetails.username": fields.String,
+        "userdetails.fullname": fields.String,
+        "telegramgroupdetails.title": fields.String,
+    },
+)
 
-telegramGroupMemberInfoArgs = reqparse.RequestParser()
+telegramGroupMemberInfoArgs = api.parser()
 telegramGroupMemberInfoArgs.add_argument(
     "user",
     type=int,
@@ -546,8 +600,15 @@ telegramGroupMemberInfoArgs.add_argument(
 )
 
 
+@api.route(
+    f"{API_BASE}/telegram_groups/<int:group>/members",
+    endpoint="telegram_group_members_list",
+)
 class TelegramGroupMembersListAPI(Resource):
     @auth.login_required
+    @api.marshal_list_with(
+        telegram_group_member_fields, envelope="telegram_group_members"
+    )
     def get(self, group):
         userID = request.args.get("userid", default=None, type=int)
 
@@ -561,13 +622,10 @@ class TelegramGroupMembersListAPI(Resource):
         members = db.session.execute(
             query.order_by(Database.TelegramGroupMembers.id)
         ).scalars()
-        return {
-            "telegram_group_members": [
-                marshal(member, telegram_group_member_fields) for member in members
-            ]
-        }
+        return list(members)
 
     @auth.login_required
+    @api.expect(telegramGroupMemberInfoArgs)
     def post(self, group):
         try:
             args = telegramGroupMemberInfoArgs.parse_args()
@@ -587,11 +645,16 @@ class TelegramGroupMembersListAPI(Resource):
             return {"error": str(e.orig)}, 409
 
 
+@api.route(
+    f"{API_BASE}/telegram_groups/<int:group>/members/<int:id>",
+    endpoint="telegram_group_members_info",
+)
 class TelegramGroupMembersAPI(Resource):
     @auth.login_required
+    @api.marshal_with(telegram_group_member_fields, envelope="telegram_group_member")
     def get(self, group, id):
-        user = db.get_or_404(Database.TelegramGroupMembers, id)
-        return {"user": marshal(user, telegram_group_member_fields)}
+        member = db.get_or_404(Database.TelegramGroupMembers, id)
+        return member
 
     @auth.login_required
     def delete(self, group, id):
@@ -600,66 +663,3 @@ class TelegramGroupMembersAPI(Resource):
         db.session.commit()
 
         return redirect(url_for("telegram_group_members_list", group=group))
-
-
-api.add_resource(UsersListAPI, f"{API_BASE}/users", endpoint="users_list")
-api.add_resource(UserAPI, f"{API_BASE}/users/<int:id>", endpoint="user_info")
-
-api.add_resource(GamesListAPI, f"{API_BASE}/games", endpoint="games_list")
-api.add_resource(GameAPI, f"{API_BASE}/games/<int:id>", endpoint="game_info")
-api.add_resource(
-    LatestGameAPI, f"{API_BASE}/games/latest", endpoint="latest_games_list"
-)
-
-api.add_resource(
-    GameResultsListAPI,
-    f"{API_BASE}/games/<int:game>/results",
-    endpoint="game_results_list",
-)
-api.add_resource(
-    GameResultAPI,
-    f"{API_BASE}/games/<int:game>/results/<int:id>",
-    endpoint="game_result_info",
-)
-
-api.add_resource(
-    ResultsListAPI,
-    f"{API_BASE}/results",
-    endpoint="results_list",
-)
-api.add_resource(
-    ResultAPI,
-    f"{API_BASE}/results/<int:id>",
-    endpoint="result_info",
-)
-
-api.add_resource(
-    GuessListAPI,
-    f"{API_BASE}/games/<int:game>/results/<int:result>/guesses",
-    endpoint="guess_list",
-)
-api.add_resource(
-    GuessAPI,
-    f"{API_BASE}/games/<int:game>/results/<int:result>/guesses/<int:id>",
-    endpoint="guess_info",
-)
-
-api.add_resource(
-    TelegramGroupListAPI, f"{API_BASE}/telegram_groups", endpoint="telegram_groups_list"
-)
-api.add_resource(
-    TelegramGroupAPI,
-    f"{API_BASE}/telegram_groups/<int:id>",
-    endpoint="telegram_group_info",
-)
-
-api.add_resource(
-    TelegramGroupMembersListAPI,
-    f"{API_BASE}/telegram_groups/<int:group>/members",
-    endpoint="telegram_group_members_list",
-)
-api.add_resource(
-    TelegramGroupMembersAPI,
-    f"{API_BASE}/telegram_groups/<int:group>/members/<int:id>",
-    endpoint="telegram_group_members_info",
-)
