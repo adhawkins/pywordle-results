@@ -52,14 +52,25 @@ function GameDetails(props) {
 
 				info.data.forEach((data) => {
 					if (props.displayGuess) {
-						newClipboardString += `\`${data.guessNumber.toString().padStart(2, '0')}\`  - ${data.data} - ||\`${data.guess}\`|| - ${data.numWords}\n`;
+						newClipboardString += `\`${data.guessNumber.toString().padStart(2, '0')}\`  - ${data.data}`
+
+						if (data.numWords > 0 && data.guess != "") {
+							newClipboardString += `- ||\`${data.guess}\`|| - ${data.numWords}`;
+						}
+
+						newClipboardString += "\n";
 
 						line++;
 						if (line == 6 && info.data.length > 6) {
 							newClipboardString += "`===================================`\n";
 						}
 					} else {
-						newClipboardString += `${data.guessNumber.toString().padStart(2, '0')}  - ${data.data} - ${data.numWords}\n`;
+						newClipboardString += `${data.guessNumber.toString().padStart(2, '0')}  - ${data.data}`
+						if (data.numWords != 0) {
+							newClipboardString += ` - ${data.numWords}`;
+						}
+
+						newClipboardString += "\n";
 
 						line++;
 						if (line == 6 && info.data.length > 6) {
