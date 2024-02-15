@@ -29,6 +29,8 @@ blocks = [
     "\U0001F7E9",  # Green square
 ]
 
+solvers = [3, 4]
+
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.WARNING
 )
@@ -215,7 +217,7 @@ def latestGameID():
     return None
 
 
-def fetchResults(game):
+def fetchResultsForGame(game):
     results = requests.get(f"{base_url}games/{game}/results", auth=basicAuth)
     if results:
         return sorted(results.json()["gameresults"], key=lambda d: d["user"])
@@ -245,6 +247,22 @@ def fetchGuesses(gameID, resultID):
     )
     if results:
         return results.json()["guesses"]
+
+    return None
+
+
+def fetchAllResults():
+    results = requests.get(f"{base_url}results", auth=basicAuth)
+    if results:
+        return results.json()["results"]
+
+    return None
+
+
+def fetchUser(userID):
+    user = requests.get(f"{base_url}users/{userID}", auth=basicAuth)
+    if user:
+        return user.json()["user"]
 
     return None
 
@@ -405,15 +423,13 @@ async def results(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         game = latestGameID()
 
-    results = fetchResults(game)
-
-    bots = [3, 4]
+    results = fetchResultsForGame(game)
 
     groupMembers = fetchGroupMembers(update.effective_chat.id)
     if groupMembers:
-        groupMembers += bots
+        groupMembers += solvers
     else:
-        groupMembers = bots
+        groupMembers = solvers
 
     response = ""
     if results:
@@ -462,9 +478,58 @@ async def results(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+async def streaks(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    results = fetchAllResults()
+
+    groupMembers = fetchGroupMembers(update.effective_chat.id)
+    if groupMembers:
+        groupMembers += solvers
+    else:
+        groupMembers = solvers
+
+    if results and groupMembers:
+        streaks = {}
+
+        for member in groupMembers:
+            user = fetchUser(member)
+            if user:
+                streaks[user["id"]] = {
+                    "fullName": user["fullname"],
+                    "currentStreak": 0,
+                    "maxStreak": 0,
+                }
+
+        results.sort(key=lambda x: x["game"])
+
+        for result in results:
+            if result["user"] in streaks:
+                if result["success"]:
+                    streaks[result["user"]]["currentStreak"] += 1
+                    if (
+                        streaks[result["user"]]["currentStreak"]
+                        > streaks[result["user"]]["maxStreak"]
+                    ):
+                        streaks[result["user"]]["maxStreak"] = streaks[result["user"]][
+                            "currentStreak"
+                        ]
+                else:
+                    streaks[result["user"]]["currentStreak"] = 0
+
+        message = "Streak info:\n\n"
+
+        for key, value in sorted(streaks.items()):
+            message += f"{value['fullName']} - longest: {value['maxStreak']}, current: {value['currentStreak']}\n"
+
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=message,
+        )
+
+
 async def postInitHandler(application: Application):
     commands = [
         BotCommand("results", "Display results"),
+        BotCommand("streaks", "Display streak information"),
     ]
 
     await application.bot.set_my_commands(commands)
@@ -496,5 +561,8 @@ def telegramBot(ctx):
 
     resultsHandler = CommandHandler("results", results)
     application.add_handler(resultsHandler)
+
+    streaksHandler = CommandHandler("streaks", streaks)
+    application.add_handler(streaksHandler)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
