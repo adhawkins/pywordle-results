@@ -7,6 +7,10 @@ import click
 import Token
 
 import re
+import tempfile
+import os
+
+import plotly.express as px
 
 from telegram import Update, BotCommand
 from telegram.constants import ChatMemberStatus, ChatType, ParseMode
@@ -481,49 +485,120 @@ async def results(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def streaks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     results = fetchAllResults()
 
-    groupMembers = fetchGroupMembers(update.effective_chat.id)
-    if groupMembers:
-        groupMembers += solvers
-    else:
-        groupMembers = solvers
+    if results:
+        results.sort(key=lambda x: x["game"])
 
-    if results and groupMembers:
+        groupMembers = fetchGroupMembers(update.effective_chat.id)
+        if groupMembers:
+            groupMembers += solvers
+        else:
+            groupMembers = solvers
+
+        groupMembers.sort()
+
+        numGames = latestGameID() + 1
         streaks = {}
 
         for member in groupMembers:
             user = fetchUser(member)
             if user:
-                streaks[user["id"]] = {
+                streaks[str(user["id"])] = {
                     "fullName": user["fullname"],
                     "currentStreak": 0,
                     "maxStreak": 0,
+                    "streakData": [0] * numGames,
                 }
 
-        results.sort(key=lambda x: x["game"])
+        chartData = []
+
+        for game in range(0, latestGameID() + 1):
+            for user, streak in streaks.items():
+                filteredResult = list(
+                    filter(
+                        lambda result: str(result["user"]) == user
+                        and result["game"] == game,
+                        results,
+                    )
+                )
+
+                result = None
+                if filteredResult:
+                    result = filteredResult[0]
+
+                if result and result["success"]:
+                    streak["currentStreak"] += 1
+                    if streak["currentStreak"] > streak["maxStreak"]:
+                        streak["maxStreak"] = streak["currentStreak"]
+                else:
+                    streak["currentStreak"] = 0
+
+                streak["streakData"][game] = streak["currentStreak"]
 
         for result in results:
-            if result["user"] in streaks:
-                if result["success"]:
-                    streaks[result["user"]]["currentStreak"] += 1
-                    if (
-                        streaks[result["user"]]["currentStreak"]
-                        > streaks[result["user"]]["maxStreak"]
-                    ):
-                        streaks[result["user"]]["maxStreak"] = streaks[result["user"]][
-                            "currentStreak"
-                        ]
-                else:
-                    streaks[result["user"]]["currentStreak"] = 0
+            if str(result["user"]) in streaks:
+                data = streaks[str(result["user"])]
 
-        message = "Streak info:\n\n"
+                chartData.append(
+                    {
+                        "game": result["game"],
+                        "user": f"{data['fullName']} - longest: {data['maxStreak']}, current: {data['currentStreak']}",
+                        "streak": data["streakData"][result["game"]],
+                    }
+                )
 
-        for key, value in sorted(streaks.items()):
-            message += f"{value['fullName']} - longest: {value['maxStreak']}, current: {value['currentStreak']}\n"
+        categoryOrders = {"user": []}
 
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=message,
+        caption = ""
+        for member in groupMembers:
+            data = streaks[str(member)]
+
+            categoryOrders["user"].append(
+                f"{data['fullName']} - longest: {data['maxStreak']}, current: {data['currentStreak']}"
+            )
+
+            caption += f"{data['fullName']} - longest: {data['maxStreak']}, current: {data['currentStreak']}\n"
+
+        fig = px.line(
+            chartData,
+            width=1920,
+            height=1080,
+            x="game",
+            y="streak",
+            color="user",
+            category_orders=categoryOrders,
+            labels={
+                "game": "Game",
+                "streak": "Streak",
+                "user": "User",
+            },
+            title="Streak History",
         )
+
+        fig.update_layout(
+            legend=dict(
+                yanchor="top",
+                y=-0.2,
+                xanchor="left",
+                x=0,
+            ),
+            title_x=0.5,
+            font=dict(size=40),
+        )
+
+        tempFile, tempFileName = tempfile.mkstemp(suffix=".png")
+        os.close(tempFile)
+
+        fig.write_image(tempFileName)
+
+        await context.bot.send_photo(
+            chat_id=update.effective_chat.id,
+            reply_to_message_id=update.message.message_id,
+            photo=tempFileName,
+            caption=caption,
+            filename="streakshistory.png",
+        )
+
+        os.remove(tempFileName)
 
 
 async def postInitHandler(application: Application):

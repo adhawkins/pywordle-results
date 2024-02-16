@@ -2,3 +2,6 @@ click
 packaging
 requests
 python-telegram-bot
+plotly
+kaleido
+pandas
