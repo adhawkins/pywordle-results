@@ -292,10 +292,13 @@ async def botMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
             message = ""
 
         if message:
-            await context.bot.send_message(
-                chat_id=update.my_chat_member.chat.id,
-                text=message,
-            )
+            try:
+                await context.bot.send_message(
+                    chat_id=update.my_chat_member.chat.id,
+                    text=message,
+                )
+            except Exception as e:
+                print(f"Exception: '{e}'")
 
 
 async def groupMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -332,10 +335,13 @@ async def groupMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             removeUserFromGroup(update.chat_member.chat.id, user["id"])
 
-        await context.bot.send_message(
-            chat_id=update.chat_member.chat.id,
-            text=message,
-        )
+        try:
+            await context.bot.send_message(
+                chat_id=update.chat_member.chat.id,
+                text=message,
+            )
+        except Exception as e:
+            print(f"Exception: '{e}'")
 
 
 async def chatMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -400,15 +406,22 @@ async def chatMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                         guessNumber += 1
 
-                await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
-                    text=f"Wordle result for '{user['fullname']}' game {words[1]}: {numGuesses[0]}",
-                )
+                try:
+                    await context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text=f"Wordle result for '{user['fullname']}' game {words[1]}: {numGuesses[0]}",
+                    )
+                except Exception as e:
+                    print(f"Exception: '{e}'")
+
             else:
-                await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
-                    text=f"@{update.message.from_user.username}, that looked like a Wordle result, but I couldn't parse it properly",
-                )
+                try:
+                    await context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text=f"@{update.message.from_user.username}, that looked like a Wordle result, but I couldn't parse it properly",
+                    )
+                except Exception as e:
+                    print(f"Exception: '{e}'")
     else:
         print(f"Can't find user with id {update.message.from_user.id}")
 
@@ -418,10 +431,13 @@ async def results(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             game = int(context.args[0])
         except ValueError:
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=f"Invalid game number '{context.args[0]}'",
-            )
+            try:
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=f"Invalid game number '{context.args[0]}'",
+                )
+            except Exception as e:
+                print(f"Exception: '{e}'")
 
             return
     else:
@@ -470,16 +486,22 @@ async def results(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         guessNum += 1
 
     if response:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=response,
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+        try:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=response,
+                parse_mode=ParseMode.MARKDOWN_V2,
+            )
+        except Exception as e:
+            print(f"Exception: '{e}'")
     else:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=f"No results found for game {game}",
-        )
+        try:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=f"No results found for game {game}",
+            )
+        except Exception as e:
+            print(f"Exception: '{e}'")
 
 
 async def streaks(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -590,13 +612,16 @@ async def streaks(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         fig.write_image(tempFileName)
 
-        await context.bot.send_photo(
-            chat_id=update.effective_chat.id,
-            reply_to_message_id=update.message.message_id,
-            photo=tempFileName,
-            caption=caption,
-            filename="streakshistory.png",
-        )
+        try:
+            await context.bot.send_photo(
+                chat_id=update.effective_chat.id,
+                reply_to_message_id=update.message.message_id,
+                photo=tempFileName,
+                caption=caption,
+                filename="streakshistory.png",
+            )
+        except Exception as e:
+            print(f"Exception: '{e}'")
 
         os.remove(tempFileName)
 
