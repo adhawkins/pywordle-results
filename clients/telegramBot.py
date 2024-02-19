@@ -626,10 +626,49 @@ async def streaks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         os.remove(tempFileName)
 
 
+async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    results = fetchAllResults()
+    if results:
+        stats = {}
+
+        for result in results:
+            if not result["userdetails.username"] in stats:
+                stats[result["userdetails.username"]] = {
+                    "fullName": result["userdetails.fullname"],
+                    "guesses": [],
+                    "failures": 0,
+                    "results": 0,
+                }
+
+            if result["success"]:
+                stats[result["userdetails.username"]]["guesses"].append(
+                    result["guesses"]
+                )
+            else:
+                stats[result["userdetails.username"]]["failures"] += 1
+
+            stats[result["userdetails.username"]]["results"] += 1
+
+        message = ""
+
+        for key, value in stats.items():
+            message += f"'{value['fullName']}': results: {value['results']}, average: {sum(value['guesses']) / len(value['guesses']):.3f}, failures: {value['failures']}\n"
+
+        if message:
+            try:
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=message,
+                )
+            except Exception as e:
+                print(f"Exception: '{e}'")
+
+
 async def postInitHandler(application: Application):
     commands = [
         BotCommand("results", "Display results"),
         BotCommand("streaks", "Display streak information"),
+        BotCommand("stats", "Display statistics"),
     ]
 
     await application.bot.set_my_commands(commands)
@@ -664,5 +703,8 @@ def telegramBot(ctx):
 
     streaksHandler = CommandHandler("streaks", streaks)
     application.add_handler(streaksHandler)
+
+    statsHandler = CommandHandler("stats", stats)
+    application.add_handler(statsHandler)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
