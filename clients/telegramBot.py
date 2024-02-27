@@ -9,8 +9,10 @@ import Token
 import re
 import tempfile
 import os
+import math
 
 import plotly.express as px
+import pandas as pd
 
 from telegram import Update, BotCommand
 from telegram.constants import ChatMemberStatus, ChatType, ParseMode
@@ -664,11 +666,82 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 print(f"Exception: '{e}'")
 
 
+async def userDistribution(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    results = fetchAllResults()
+    if results:
+        dfResults = pd.DataFrame.from_records(results).drop(
+            ["id", "user", "game", "gamedetails.date", "gamedetails.solution", "uri"],
+            axis=1,
+        )
+
+        dfResults["guesses"] = dfResults["guesses"].astype(str)
+        dfResults.loc[dfResults["success"] == 0, "guesses"] = "Fail"
+
+        totals = (
+            dfResults.groupby("userdetails.fullname")["guesses"]
+            .count()
+            .apply(lambda x: 100 / x)
+        )
+
+        dfSummary = (
+            dfResults.groupby("userdetails.fullname")
+            .value_counts(["guesses"])
+            .multiply(totals)
+            .apply(math.ceil)
+            .unstack(level=-1)
+            .fillna(0)
+            .astype(int)
+        )
+
+        fig = px.bar(
+            dfSummary,
+            width=1920,
+            height=1080,
+            y=dfSummary.columns,
+            barmode="group",
+            labels={
+                "userdetails.fullname": "User",
+                "guesses": "Guesses",
+                "value": "Frequency (%)",
+            },
+        )
+
+        fig.update_layout(
+            legend=dict(
+                yanchor="top",
+                y=-0.2,
+                xanchor="left",
+                x=0,
+            ),
+            title_x=0.5,
+            font=dict(size=40),
+        )
+
+        tempFile, tempFileName = tempfile.mkstemp(suffix=".png")
+        os.close(tempFile)
+
+        fig.write_image(tempFileName)
+
+        try:
+            await context.bot.send_photo(
+                chat_id=update.effective_chat.id,
+                reply_to_message_id=update.message.message_id,
+                photo=tempFileName,
+                caption="Distribution by User",
+                filename="distributionbyuser.png",
+            )
+        except Exception as e:
+            print(f"Exception: '{e}'")
+
+        os.remove(tempFileName)
+
+
 async def postInitHandler(application: Application):
     commands = [
         BotCommand("results", "Display results"),
         BotCommand("streaks", "Display streak information"),
         BotCommand("stats", "Display statistics"),
+        BotCommand("userdistribution", "Guess Distribution per user"),
     ]
 
     await application.bot.set_my_commands(commands)
@@ -706,5 +779,8 @@ def telegramBot(ctx):
 
     statsHandler = CommandHandler("stats", stats)
     application.add_handler(statsHandler)
+
+    userDistributionHandler = CommandHandler("userdistribution", userDistribution)
+    application.add_handler(userDistributionHandler)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
