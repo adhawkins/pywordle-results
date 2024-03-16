@@ -14,6 +14,8 @@ import math
 import plotly.express as px
 import pandas as pd
 
+from babel.numbers import parse_decimal
+
 from telegram import Update, BotCommand
 from telegram.constants import ChatMemberStatus, ChatType, ParseMode
 from telegram.ext import (
@@ -355,7 +357,7 @@ async def chatMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         firstLine = lines[0]
 
-        match = re.search("^Wordle \d+ [\dX]\/\d\*?$", firstLine)
+        match = re.search("^Wordle [\d,]+ [\dX]\/\d\*?$", firstLine)
         if match:
             words = firstLine.split()
             numGuesses = words[2].split("/")
@@ -391,9 +393,11 @@ async def chatMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 (numGuesses[0] == "X" and len(guesses) >= 6)
                 or (numGuesses[0] != "X" and int(numGuesses[0]) == len(guesses))
             ):
+                gameNumber = int(parse_decimal(words[1], locale="en_US"))
+
                 gameResult = {
                     "user": user["id"],
-                    "game": words[1],
+                    "game": gameNumber,
                     "guesses": numGuesses[0] if numGuesses[0] != "X" else 0,
                     "success": 1 if numGuesses[0] != "X" else 0,
                 }
@@ -404,14 +408,14 @@ async def chatMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 if result:
                     for guess in guesses:
-                        addGuess(words[1], result["id"], guessNumber, guess)
+                        addGuess(gameNumber, result["id"], guessNumber, guess)
 
                         guessNumber += 1
 
                 try:
                     await context.bot.send_message(
                         chat_id=update.effective_chat.id,
-                        text=f"Wordle result for '{user['fullname']}' game {words[1]}: {numGuesses[0]}",
+                        text=f"Wordle result for '{user['fullname']}' game {gameNumber}: {numGuesses[0]}",
                     )
                 except Exception as e:
                     print(f"Exception: '{e}'")
