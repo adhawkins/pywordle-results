@@ -25,8 +25,11 @@ from telegram.ext import (
     ChatMemberHandler,
     CommandHandler,
     MessageHandler,
+    PicklePersistence,
     filters,
 )
+
+from TelegramBot.Settings import Settings
 
 base_url = ""
 basicAuth = requests.auth.HTTPBasicAuth("andy", "testing")
@@ -289,6 +292,11 @@ async def botMembership(update: Update, context: ContextTypes.DEFAULT_TYPE):
             message = f"Member status in group {update.my_chat_member.chat.title} ({update.my_chat_member.new_chat_member.status}) - {result.status_code}"
 
         elif update.my_chat_member.new_chat_member.status == ChatMemberStatus.LEFT:
+            await context.application.persistence.drop_chat_data(
+                update.my_chat_member.chat.id
+            )
+            await context.application.persistence.flush()
+
             result = removeGroup(update.my_chat_member.chat.id)
             print(
                 f"Left group {update.my_chat_member.chat.title} ({update.my_chat_member.chat.type}), result: {result.status_code}"
@@ -810,6 +818,49 @@ async def guessDistribution(update: Update, context: ContextTypes.DEFAULT_TYPE):
         os.remove(tempFileName)
 
 
+async def settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = ""
+
+    member = await context.bot.get_chat_member(
+        update.effective_chat.id, update.message.from_user.id
+    )
+
+    if (
+        member.status == ChatMemberStatus.ADMINISTRATOR
+        or member.status == ChatMemberStatus.OWNER
+    ):
+        if len(context.args) == 2:
+
+            if Settings.validSetting(context.args[0]):
+                try:
+                    value = Settings.parseSetting(context.args[0], context.args[1])
+
+                    Settings.setSetting(context.chat_data, context.args[0], value)
+                    await context.application.persistence.flush()
+
+                    message = f"{context.args[0].lower()} set to {value}"
+                except ValueError as e:
+                    message = f"Invalid setting value {context.args[1]}"
+
+            else:
+                message = f"Unknown setting: {context.args[0]}"
+        else:
+            for setting in Settings.validSettings.keys():
+                message += (
+                    f"{setting}: {Settings.getSetting(context.chat_data,setting)}\n"
+                )
+    else:
+        message = "Command available to group administrators only"
+
+    try:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=message,
+        )
+    except Exception as e:
+        print(f"Exception: '{e}'")
+
+
 async def postInitHandler(application: Application):
     commands = [
         BotCommand("results", "Display results"),
@@ -817,9 +868,14 @@ async def postInitHandler(application: Application):
         BotCommand("stats", "Display statistics"),
         BotCommand("userdistribution", "Guess Distribution per user"),
         BotCommand("guessdistribution", "Guess Distribution per number of guesses"),
+        BotCommand("settings", "View and change bot settings for the current group"),
     ]
 
     await application.bot.set_my_commands(commands)
+
+
+async def postShutdownHandler(application: Application):
+    await application.persistence.flush()
 
 
 @click.command()
@@ -829,8 +885,15 @@ def telegramBot(ctx):
 
     base_url = ctx.obj["BASE_URL"]
 
+    persistence = PicklePersistence(filepath="telegrambot.pickle", update_interval=60)
+
     application = (
-        ApplicationBuilder().token(Token.Token).post_init(postInitHandler).build()
+        ApplicationBuilder()
+        .token(Token.Token)
+        .post_init(postInitHandler)
+        .post_shutdown(postShutdownHandler)
+        .persistence(persistence)
+        .build()
     )
 
     botMembershipHandler = ChatMemberHandler(
@@ -860,5 +923,8 @@ def telegramBot(ctx):
 
     guessDistributionHandler = CommandHandler("guessdistribution", guessDistribution)
     application.add_handler(guessDistributionHandler)
+
+    settingsHandler = CommandHandler("settings", settings)
+    application.add_handler(settingsHandler)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
