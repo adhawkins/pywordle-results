@@ -441,25 +441,49 @@ async def chatMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def results(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    argument = ""
     if len(context.args) == 1:
-        try:
-            game = int(context.args[0])
-        except ValueError:
+        argument = context.args[0]
+
+    try:
+        response = await displayResults(argument, update.effective_chat.id)
+
+        if response:
             try:
                 await context.bot.send_message(
                     chat_id=update.effective_chat.id,
-                    text=f"Invalid game number '{context.args[0]}'",
+                    text=response,
+                    parse_mode=ParseMode.MARKDOWN_V2,
                 )
             except Exception as e:
                 print(f"Exception: '{e}'")
+        else:
+            try:
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=f"No results found for game {context.args[0]}",
+                )
+            except Exception as e:
+                print(f"Exception: '{e}'")
+    except ValueError as e:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=str(e),
+        )
 
-            return
+
+async def displayResults(argument, chatID):
+    if argument:
+        try:
+            game = int(argument)
+        except ValueError:
+            raise ValueError(f"Invalid game number '{argument}'")
     else:
         game = latestGameID()
 
     results = fetchResultsForGame(game)
 
-    groupMembers = fetchGroupMembers(update.effective_chat.id)
+    groupMembers = fetchGroupMembers(chatID)
     if groupMembers:
         groupMembers += solvers
     else:
@@ -499,23 +523,7 @@ async def results(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         response += "\n"
                         guessNum += 1
 
-    if response:
-        try:
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=response,
-                parse_mode=ParseMode.MARKDOWN_V2,
-            )
-        except Exception as e:
-            print(f"Exception: '{e}'")
-    else:
-        try:
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=f"No results found for game {game}",
-            )
-        except Exception as e:
-            print(f"Exception: '{e}'")
+    return response
 
 
 async def streaks(update: Update, context: ContextTypes.DEFAULT_TYPE):
