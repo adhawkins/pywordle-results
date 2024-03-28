@@ -428,6 +428,54 @@ async def chatMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except Exception as e:
                     print(f"Exception: '{e}'")
 
+                autoSendResults = Settings.getSetting(
+                    context.chat_data, "autosendresults"
+                )
+
+                if autoSendResults:
+                    groupMembers = fetchGroupMembers(update.effective_chat.id)
+                    resultsForGame = fetchResultsForGame(gameNumber)
+
+                    allResultsReceived = True
+
+                    for member in groupMembers:
+                        matchingResults = list(
+                            filter(
+                                lambda result: result["user"] == member, resultsForGame
+                            )
+                        )
+                        if not matchingResults:
+                            allResultsReceived = False
+                            break
+
+                    if allResultsReceived:
+                        try:
+                            response = await displayResults(
+                                gameNumber, update.effective_chat.id
+                            )
+
+                            if response:
+                                try:
+                                    await context.bot.send_message(
+                                        chat_id=update.effective_chat.id,
+                                        text=response,
+                                        parse_mode=ParseMode.MARKDOWN_V2,
+                                    )
+                                except Exception as e:
+                                    print(f"Exception: '{e}'")
+                            else:
+                                try:
+                                    await context.bot.send_message(
+                                        chat_id=update.effective_chat.id,
+                                        text=f"No results found for game {gameNumber}",
+                                    )
+                                except Exception as e:
+                                    print(f"Exception: '{e}'")
+                        except ValueError as e:
+                            await context.bot.send_message(
+                                chat_id=update.effective_chat.id,
+                                text=str(e),
+                            )
             else:
                 try:
                     await context.bot.send_message(
